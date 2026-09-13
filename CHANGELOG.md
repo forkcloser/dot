@@ -7,6 +7,8 @@ command line interface described in `README.md`.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-13
+
 ### Added
 
 - The `dot` command: `-K` layout, `-T` format (dot, svg, png, jpg), `-o`
