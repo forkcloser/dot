@@ -42,6 +42,13 @@ A tool directive on it cannot move. This module is the same thin client on
 the current library, tagged, so a `tool` directive or `go install` pin
 tracks releases like any other dependency.
 
+## Releasing
+
+A release is a signed tag on `main`, cut with `just do release vX.Y.Z` by a
+repository admin; `go install` and tool directives take it from the module
+proxy. Before tagging: `just lint` and `just test` green on CI, and
+`CHANGELOG.md` moved from *Unreleased* to the version with the date.
+
 ## Licence
 
 MIT, see `LICENSE`. go-graphviz is MIT; its dependency tree includes
