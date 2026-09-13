@@ -1,0 +1,74 @@
+# DO NOT EDIT MANUALLY.
+# This file is common to all projects and managed by limen.
+# Most tools can be installed directly from aqua registry without local overrides.
+# Addition of non-standard tools can be discussed on https://github.com/farcloser/limen
+
+packages:
+  # No go_install entries: every Go-built tool is a tool directive in
+  # tools/go.mod (book/tooling.md, "Go-built tools are go.mod tools").
+  # limen itself: every repo pins the version that enforces it, so the binary
+  # and the canonical files it embeds travel together (no version skew between
+  # the checker and the checked). Graduates to the standard registry once
+  # farcloser/limen is registered there.
+  - type: github_release
+    repo_owner: farcloser
+    repo_name: limen
+    description: Verify a repository against Farcloser engineering rules
+    asset: limen_{{trimV .Version}}_{{.OS}}_{{.Arch}}.tar.gz
+    format: tar.gz
+    files:
+      - name: limen
+    checksum:
+      type: github_release
+      asset: checksums.txt
+      algorithm: sha256
+      # Signed keyless from CI: the bundle over checksums.txt transitively
+      # covers every listed asset, and the identity IS the release workflow at
+      # the exact tag — anything else fails the install.
+      cosign:
+        bundle:
+          type: github_release
+          asset: checksums.txt.sigstore.json
+        opts:
+          - --certificate-identity
+          - https://github.com/farcloser/limen/.github/workflows/release.yaml@refs/tags/{{.Version}}
+          - --certificate-oidc-issuer
+          - https://token.actions.githubusercontent.com
+    supported_envs:
+      - darwin/arm64
+      - linux
+      - windows
+  # uutils/coreutils under the names recipes type: the binary dispatches on
+  # argv[0], so `sha256sum` and `base64` link to it and a bare name on the
+  # hermetic PATH is the pin on every platform. Carried locally until the
+  # extra names land upstream; when upstream's asset naming changes, this copy
+  # needs the same edit. Upstream publishes no checksum file and no
+  # provenance: verify each asset against GitHub's release attestation at
+  # every bump (`gh release verify-asset <tag> <asset> -R uutils/coreutils`),
+  # which aqua cannot check itself.
+  - type: github_release
+    repo_owner: uutils
+    repo_name: coreutils
+    description: Cross-platform Rust rewrite of the GNU coreutils
+    asset: coreutils-{{.Version}}-{{.Arch}}-{{.OS}}.{{.Format}}
+    format: tar.gz
+    replacements:
+      amd64: x86_64
+      arm64: aarch64
+      darwin: apple-darwin
+      linux: unknown-linux-musl
+      windows: pc-windows-msvc
+    overrides:
+      - goos: windows
+        format: zip
+    files:
+      - name: coreutils
+        src: coreutils-{{.Version}}-{{.Arch}}-{{.OS}}/coreutils
+      - name: sha256sum
+        src: coreutils-{{.Version}}-{{.Arch}}-{{.OS}}/coreutils
+      - name: base64
+        src: coreutils-{{.Version}}-{{.Arch}}-{{.OS}}/coreutils
+    supported_envs:
+      - darwin/arm64
+      - linux
+      - windows

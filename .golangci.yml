@@ -1,0 +1,84 @@
+version: "2"
+
+# Linters for a small command line tool. The bias is towards correctness:
+# error handling, the traps that are easy to introduce and hard to see, and
+# hygiene; nothing that argues about style.
+
+linters:
+  enable:
+    - errorlint # == and type switches on errors break once anything wraps
+    - nilerr # returning nil after checking an error is never intended
+
+    - bodyclose
+    - copyloopvar
+    - durationcheck
+    - makezero
+    - predeclared
+    - reassign
+    - wastedassign
+
+    - gocritic
+    - gosec
+    - revive
+
+    - misspell
+    - nolintlint
+    - unconvert
+    - usestdlibvars
+
+    - testifylint
+    - thelper
+    - tparallel
+
+  settings:
+    errcheck:
+      exclude-functions:
+        # Diagnostics. A failed write to a usage or log stream cannot be
+        # acted on, and checking every one would bury the code that matters.
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+
+    gosec:
+      excludes:
+        # Duplicates errcheck, which reports the same thing more precisely.
+        - G104
+
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+
+    revive:
+      rules:
+        - name: redefines-builtin-id
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: errorf
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: range
+        - name: receiver-naming
+        - name: superfluous-else
+        - name: time-naming
+        - name: unexported-return
+        - name: unreachable-code
+        - name: var-declaration
+        - name: waitgroup-by-value
+
+  exclusions:
+    rules:
+      # dot is a command line tool: opening the file it was asked to open and
+      # creating the one it was asked to write is the job, not a taint problem.
+      - path: ^cmd/
+        linters: [gosec]
+        text: G(304|306|307)
+
+formatters:
+  enable:
+    - gofmt
