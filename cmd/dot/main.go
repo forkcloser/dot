@@ -132,6 +132,11 @@ func render(ctx context.Context, opt options, in io.Reader, out io.Writer) error
 	if err != nil {
 		return fmt.Errorf("parse input: %w", err)
 	}
+	// Empty or whitespace-only input parses to a nil graph without an error,
+	// and rendering nil faults inside the WASM engine.
+	if graph == nil {
+		return errors.New("parse input: no graph found")
+	}
 	g, err := graphviz.New(ctx)
 	if err != nil {
 		return fmt.Errorf("start graphviz: %w", err)

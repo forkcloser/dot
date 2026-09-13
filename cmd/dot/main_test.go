@@ -110,3 +110,40 @@ func FuzzParseArgs(f *testing.F) {
 		}
 	})
 }
+
+func TestEmptyInputIsAnError(t *testing.T) {
+	for _, in := range []string{"", "  \n"} {
+		var out, errb bytes.Buffer
+		if code := run([]string{"-Tsvg"}, strings.NewReader(in), &out, &errb); code != 1 {
+			t.Errorf("%q: exit %d, want 1", in, code)
+		}
+		// A fresh engine parses empty input to a nil graph; one that has
+		// parsed before reports a syntax error. Either is a parse error.
+		if !strings.HasPrefix(errb.String(), "dot: parse input:") {
+			t.Errorf("%q: stderr %q", in, errb.String())
+		}
+	}
+}
+
+// TestPprofGraph renders what `go tool pprof -dot` emits, the input the
+// limen profile recipe hands to this command.
+func TestPprofGraph(t *testing.T) {
+	src, err := os.ReadFile(filepath.Join("testdata", "pprof.dot"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var svg, errb bytes.Buffer
+	if code := run([]string{"-Tsvg"}, bytes.NewReader(src), &svg, &errb); code != 0 {
+		t.Fatalf("svg: exit %d: %s", code, errb.String())
+	}
+	if n := strings.Count(svg.String(), `class="node"`); n < 10 {
+		t.Errorf("svg has %d nodes, want at least 10", n)
+	}
+	var png bytes.Buffer
+	if code := run([]string{"-Tpng"}, bytes.NewReader(src), &png, &errb); code != 0 {
+		t.Fatalf("png: exit %d: %s", code, errb.String())
+	}
+	if !bytes.HasPrefix(png.Bytes(), []byte("\x89PNG")) {
+		t.Errorf("png output is not a PNG")
+	}
+}

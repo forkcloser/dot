@@ -1,0 +1,17 @@
+# Changelog
+
+All notable changes are recorded here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow
+[Semantic Versioning](https://semver.org/): the versioned surface is the
+command line interface described in `README.md`.
+
+## [Unreleased]
+
+### Added
+
+- The `dot` command: `-K` layout, `-T` format (dot, svg, png, jpg), `-o`
+  output, file or standard input, file or standard output, Graphviz's glued
+  and spaced flag forms, `-V` from the build info. Rendering by go-graphviz
+  v0.2.10, Graphviz as WebAssembly.
+- Empty or whitespace-only input is reported as "no graph found" instead of
+  faulting inside the engine.
