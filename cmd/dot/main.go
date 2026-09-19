@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 	"strings"
 
@@ -175,21 +176,43 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		defer func() { _ = f.Close() }()
 		in = f
 	}
-	out := stdout
-	if opt.output != "" {
-		f, err := os.Create(opt.output)
-		if err != nil {
+	if opt.output == "" {
+		if err := render(context.Background(), opt, in, stdout); err != nil {
 			fmt.Fprintln(stderr, "dot:", err)
 			return 1
 		}
-		defer func() { _ = f.Close() }()
-		out = f
+		return 0
 	}
-	if err := render(context.Background(), opt, in, out); err != nil {
+	if err := renderToFile(context.Background(), opt, in); err != nil {
 		fmt.Fprintln(stderr, "dot:", err)
 		return 1
 	}
 	return 0
+}
+
+// renderToFile renders into a temporary file beside opt.output and renames
+// it onto the path only once the render has completed: a failed render, an
+// interrupt or a full disk leaves whatever was at the path untouched rather
+// than a truncated file that a later build would take for a finished one.
+func renderToFile(ctx context.Context, opt options, in io.Reader) (err error) {
+	dir, base := filepath.Split(opt.output)
+	tmp, err := os.CreateTemp(dir, "."+base+".*")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tmp.Close()
+			_ = os.Remove(tmp.Name())
+		}
+	}()
+	if err = render(ctx, opt, in, tmp); err != nil {
+		return err
+	}
+	if err = tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), opt.output)
 }
 
 func main() {
