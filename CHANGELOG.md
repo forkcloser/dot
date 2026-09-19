@@ -7,6 +7,13 @@ command line interface described in `README.md`.
 
 ## [Unreleased]
 
+### Fixed
+
+- `-o` rendered straight into the output path, so a failed render, an
+  interrupt or a full disk left a truncated file there; a plain parse error
+  emptied a previously good output. The render now goes to a temporary file
+  beside the target, renamed onto it only on success.
+
 ## [1.0.0] - 2026-09-13
 
 ### Added

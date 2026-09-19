@@ -147,3 +147,35 @@ func TestPprofGraph(t *testing.T) {
 		t.Errorf("png output is not a PNG")
 	}
 }
+
+// TestFailedRenderLeavesOutputAlone: a render that fails must not touch what
+// is already at -o, and must leave no temporary file beside it.
+func TestFailedRenderLeavesOutputAlone(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "out.png")
+	if err := os.WriteFile(out, []byte("previous"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"-Tpng", "-o" + out}, strings.NewReader("digraph { a -> "), &stdout, &stderr); code != 1 {
+		t.Fatalf("exit %d, want 1: %s", code, stderr.String())
+	}
+	got, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "previous" {
+		t.Errorf("output was touched by a failed render: %q", got)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		names := make([]string, 0, len(entries))
+		for _, e := range entries {
+			names = append(names, e.Name())
+		}
+		t.Errorf("leftover files beside the output: %v", names)
+	}
+}
