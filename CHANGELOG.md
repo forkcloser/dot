@@ -7,6 +7,8 @@ command line interface described in `README.md`.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-09-20
+
 ### Fixed
 
 - `-o` rendered straight into the output path, so a failed render, an
