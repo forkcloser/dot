@@ -61,14 +61,17 @@ var (
 // which the standard flag package cannot do.
 func parseArgs(args []string) (options, error) {
 	opt := options{layout: graphviz.DOT, format: graphviz.XDOT}
+
 	take := func(i *int, glued string) (string, error) {
 		if glued != "" {
 			return glued, nil
 		}
+
 		*i++
 		if *i >= len(args) {
 			return "", fmt.Errorf("%w: %s needs a value", errUsage, args[*i-1])
 		}
+
 		return args[*i], nil
 	}
 	for i := 0; i < len(args); i++ {
@@ -82,37 +85,44 @@ func parseArgs(args []string) (options, error) {
 			if opt.input != "" {
 				return opt, fmt.Errorf("%w: one input at most, got %q and %q", errUsage, opt.input, a)
 			}
+
 			opt.input = a
 		case strings.HasPrefix(a, "-K"):
 			v, err := take(&i, a[2:])
 			if err != nil {
 				return opt, err
 			}
+
 			l, ok := layouts[v]
 			if !ok {
 				return opt, fmt.Errorf("%w: unknown layout %q", errUsage, v)
 			}
+
 			opt.layout = l
 		case strings.HasPrefix(a, "-T"):
 			v, err := take(&i, a[2:])
 			if err != nil {
 				return opt, err
 			}
+
 			f, ok := formats[v]
 			if !ok {
 				return opt, fmt.Errorf("%w: unknown format %q", errUsage, v)
 			}
+
 			opt.format = f
 		case strings.HasPrefix(a, "-o"):
 			v, err := take(&i, a[2:])
 			if err != nil {
 				return opt, err
 			}
+
 			opt.output = v
 		default:
 			return opt, fmt.Errorf("%w: unknown flag %q", errUsage, a)
 		}
 	}
+
 	return opt, nil
 }
 
@@ -120,6 +130,7 @@ func version() string {
 	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" {
 		return bi.Main.Version
 	}
+
 	return "(devel)"
 }
 
@@ -129,6 +140,7 @@ func render(ctx context.Context, opt options, in io.Reader, out io.Writer) error
 	if err != nil {
 		return fmt.Errorf("read input: %w", err)
 	}
+
 	graph, err := graphviz.ParseBytes(src)
 	if err != nil {
 		return fmt.Errorf("parse input: %w", err)
@@ -138,15 +150,20 @@ func render(ctx context.Context, opt options, in io.Reader, out io.Writer) error
 	if graph == nil {
 		return errors.New("parse input: no graph found")
 	}
+
 	g, err := graphviz.New(ctx)
 	if err != nil {
 		return fmt.Errorf("start graphviz: %w", err)
 	}
+
 	defer func() { _ = g.Close() }()
+
 	g.SetLayout(opt.layout)
+
 	if err := g.Render(ctx, graph, opt.format, out); err != nil {
 		return fmt.Errorf("render: %w", err)
 	}
+
 	return nil
 }
 
@@ -155,8 +172,10 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if err != nil {
 		fmt.Fprintln(stderr, "dot:", err)
 		fmt.Fprint(stderr, usage)
+
 		return 2
 	}
+
 	switch {
 	case opt.help:
 		fmt.Fprint(stdout, usage)
@@ -167,6 +186,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 
 	in := stdin
+
 	if opt.input != "" && opt.input != "-" {
 		f, err := os.Open(opt.input)
 		if err != nil {
@@ -174,19 +194,24 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			return 1
 		}
 		defer func() { _ = f.Close() }()
+
 		in = f
 	}
+
 	if opt.output == "" {
 		if err := render(context.Background(), opt, in, stdout); err != nil {
 			fmt.Fprintln(stderr, "dot:", err)
 			return 1
 		}
+
 		return 0
 	}
+
 	if err := renderToFile(context.Background(), opt, in); err != nil {
 		fmt.Fprintln(stderr, "dot:", err)
 		return 1
 	}
+
 	return 0
 }
 
@@ -196,22 +221,27 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 // than a truncated file that a later build would take for a finished one.
 func renderToFile(ctx context.Context, opt options, in io.Reader) (err error) {
 	dir, base := filepath.Split(opt.output)
+
 	tmp, err := os.CreateTemp(dir, "."+base+".*")
 	if err != nil {
 		return err
 	}
+
 	defer func() {
 		if err != nil {
 			_ = tmp.Close()
 			_ = os.Remove(tmp.Name())
 		}
 	}()
+
 	if err = render(ctx, opt, in, tmp); err != nil {
 		return err
 	}
+
 	if err = tmp.Close(); err != nil {
 		return err
 	}
+
 	return os.Rename(tmp.Name(), opt.output)
 }
 
