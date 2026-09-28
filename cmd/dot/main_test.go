@@ -35,6 +35,7 @@ func TestParseArgs(t *testing.T) {
 			t.Errorf("%q: err=%v, want error=%v", c.args, err, c.err)
 			continue
 		}
+
 		if !c.err && got != c.want {
 			t.Errorf("%q: got %+v, want %+v", c.args, got, c.want)
 		}
@@ -50,10 +51,12 @@ func TestRenderFormats(t *testing.T) {
 	}
 	for format, want := range magic {
 		var out, errb bytes.Buffer
+
 		code := run([]string{"-T" + format}, strings.NewReader(sample), &out, &errb)
 		if code != 0 {
 			t.Fatalf("-T%s: exit %d: %s", format, code, errb.String())
 		}
+
 		if !strings.HasPrefix(out.String(), want) {
 			t.Errorf("-T%s: output does not start with %q: %q", format, want, out.String()[:min(16, out.Len())])
 		}
@@ -64,20 +67,25 @@ func TestFileInAndOut(t *testing.T) {
 	dir := t.TempDir()
 	in := filepath.Join(dir, "in.dot")
 	out := filepath.Join(dir, "out.png")
+
 	if err := os.WriteFile(in, []byte(sample), 0o600); err != nil {
 		t.Fatal(err)
 	}
+
 	var stdout, stderr bytes.Buffer
 	if code := run([]string{"-Tpng", "-o" + out, in}, nil, &stdout, &stderr); code != 0 {
 		t.Fatalf("exit %d: %s", code, stderr.String())
 	}
+
 	if stdout.Len() != 0 {
 		t.Errorf("wrote %d bytes to stdout with -o set", stdout.Len())
 	}
+
 	b, err := os.ReadFile(out)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if !bytes.HasPrefix(b, []byte("\x89PNG")) {
 		t.Errorf("output is not a PNG")
 	}
@@ -88,12 +96,15 @@ func TestErrors(t *testing.T) {
 	if code := run([]string{"-Tgif"}, nil, &out, &errb); code != 2 {
 		t.Errorf("bad flag: exit %d, want 2", code)
 	}
+
 	if code := run([]string{filepath.Join(t.TempDir(), "missing.dot")}, nil, &out, &errb); code != 1 {
 		t.Errorf("missing input: exit %d, want 1", code)
 	}
+
 	if code := run(nil, strings.NewReader("digraph { a -> "), &out, &errb); code != 1 {
 		t.Errorf("bad input: exit %d, want 1", code)
 	}
+
 	if code := run([]string{"-h"}, nil, &out, &errb); code != 0 || !strings.HasPrefix(out.String(), "usage:") {
 		t.Errorf("-h: exit %d, out %q", code, out.String())
 	}
@@ -132,17 +143,21 @@ func TestPprofGraph(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	var svg, errb bytes.Buffer
 	if code := run([]string{"-Tsvg"}, bytes.NewReader(src), &svg, &errb); code != 0 {
 		t.Fatalf("svg: exit %d: %s", code, errb.String())
 	}
+
 	if n := strings.Count(svg.String(), `class="node"`); n < 10 {
 		t.Errorf("svg has %d nodes, want at least 10", n)
 	}
+
 	var png bytes.Buffer
 	if code := run([]string{"-Tpng"}, bytes.NewReader(src), &png, &errb); code != 0 {
 		t.Fatalf("png: exit %d: %s", code, errb.String())
 	}
+
 	if !bytes.HasPrefix(png.Bytes(), []byte("\x89PNG")) {
 		t.Errorf("png output is not a PNG")
 	}
@@ -152,30 +167,37 @@ func TestPprofGraph(t *testing.T) {
 // is already at -o, and must leave no temporary file beside it.
 func TestFailedRenderLeavesOutputAlone(t *testing.T) {
 	dir := t.TempDir()
+
 	out := filepath.Join(dir, "out.png")
 	if err := os.WriteFile(out, []byte("previous"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+
 	var stdout, stderr bytes.Buffer
 	if code := run([]string{"-Tpng", "-o" + out}, strings.NewReader("digraph { a -> "), &stdout, &stderr); code != 1 {
 		t.Fatalf("exit %d, want 1: %s", code, stderr.String())
 	}
+
 	got, err := os.ReadFile(out)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if string(got) != "previous" {
 		t.Errorf("output was touched by a failed render: %q", got)
 	}
+
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if len(entries) != 1 {
 		names := make([]string, 0, len(entries))
 		for _, e := range entries {
 			names = append(names, e.Name())
 		}
+
 		t.Errorf("leftover files beside the output: %v", names)
 	}
 }
