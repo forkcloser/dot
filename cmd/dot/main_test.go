@@ -19,8 +19,16 @@ func TestParseArgs(t *testing.T) {
 		err  bool
 	}{
 		{nil, options{layout: graphviz.DOT, format: graphviz.XDOT}, false},
-		{[]string{"-Tpng", "-oout.png", "in.dot"}, options{layout: graphviz.DOT, format: graphviz.PNG, output: "out.png", input: "in.dot"}, false},
-		{[]string{"-T", "svg", "-o", "out.svg", "-K", "neato", "-"}, options{layout: graphviz.NEATO, format: graphviz.SVG, output: "out.svg", input: "-"}, false},
+		{
+			[]string{"-Tpng", "-oout.png", "in.dot"},
+			options{layout: graphviz.DOT, format: graphviz.PNG, output: "out.png", input: "in.dot"},
+			false,
+		},
+		{
+			[]string{"-T", "svg", "-o", "out.svg", "-K", "neato", "-"},
+			options{layout: graphviz.NEATO, format: graphviz.SVG, output: "out.svg", input: "-"},
+			false,
+		},
 		{[]string{"-h"}, options{layout: graphviz.DOT, format: graphviz.XDOT, help: true}, false},
 		{[]string{"-V"}, options{layout: graphviz.DOT, format: graphviz.XDOT, version: true}, false},
 		{[]string{"-Tgif"}, options{}, true},
