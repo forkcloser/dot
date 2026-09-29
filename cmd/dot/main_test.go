@@ -95,7 +95,7 @@ func TestFileInAndOut(t *testing.T) {
 	}
 
 	if !bytes.HasPrefix(b, []byte("\x89PNG")) {
-		t.Errorf("output is not a PNG")
+		t.Error("output is not a PNG")
 	}
 }
 
@@ -167,7 +167,7 @@ func TestPprofGraph(t *testing.T) {
 	}
 
 	if !bytes.HasPrefix(png.Bytes(), []byte("\x89PNG")) {
-		t.Errorf("png output is not a PNG")
+		t.Error("png output is not a PNG")
 	}
 }
 
