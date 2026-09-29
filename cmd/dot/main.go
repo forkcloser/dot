@@ -51,16 +51,48 @@ var (
 	// errNoGraph is empty or whitespace-only input, which parses to a nil
 	// graph without an error.
 	errNoGraph = errors.New("no graph found")
-
-	layouts = map[string]graphviz.Layout{
-		"dot": graphviz.DOT, "neato": graphviz.NEATO, "fdp": graphviz.FDP,
-		"sfdp": graphviz.SFDP, "circo": graphviz.CIRCO, "twopi": graphviz.TWOPI,
-		"osage": graphviz.OSAGE, "patchwork": graphviz.PATCHWORK,
-	}
-	formats = map[string]graphviz.Format{
-		"dot": graphviz.XDOT, "svg": graphviz.SVG, "png": graphviz.PNG, "jpg": graphviz.JPG,
-	}
 )
+
+// layoutNamed is the layout engine graphviz knows by name.
+func layoutNamed(name string) (graphviz.Layout, bool) {
+	switch name {
+	case "dot":
+		return graphviz.DOT, true
+	case "neato":
+		return graphviz.NEATO, true
+	case "fdp":
+		return graphviz.FDP, true
+	case "sfdp":
+		return graphviz.SFDP, true
+	case "circo":
+		return graphviz.CIRCO, true
+	case "twopi":
+		return graphviz.TWOPI, true
+	case "osage":
+		return graphviz.OSAGE, true
+	case "patchwork":
+		return graphviz.PATCHWORK, true
+	default:
+		return "", false
+	}
+}
+
+// formatNamed is the output format by the name -T takes. "dot" is graphviz's
+// xdot: the layout written back as DOT, with the computed positions on it.
+func formatNamed(name string) (graphviz.Format, bool) {
+	switch name {
+	case "dot":
+		return graphviz.XDOT, true
+	case "svg":
+		return graphviz.SVG, true
+	case "png":
+		return graphviz.PNG, true
+	case "jpg":
+		return graphviz.JPG, true
+	default:
+		return "", false
+	}
+}
 
 // parseArgs accepts graphviz's glued flags (-Tpng) as well as spaced ones,
 // which the standard flag package cannot do.
@@ -119,14 +151,14 @@ func parseFlag(opt *options, args []string, index int) (int, error) {
 
 	switch flag {
 	case "-K":
-		layout, ok := layouts[value]
+		layout, ok := layoutNamed(value)
 		if !ok {
 			return index, fmt.Errorf("%w: unknown layout %q", errUsage, value)
 		}
 
 		opt.layout = layout
 	case "-T":
-		format, ok := formats[value]
+		format, ok := formatNamed(value)
 		if !ok {
 			return index, fmt.Errorf("%w: unknown format %q", errUsage, value)
 		}
