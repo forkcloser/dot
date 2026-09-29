@@ -224,6 +224,7 @@ func renderToFile(ctx context.Context, opt options, input io.Reader) (err error)
 
 	tmp, err := os.CreateTemp(dir, "."+base+".*")
 	if err != nil {
+		//nolint:wrapcheck // os's *PathError already names the operation and the path
 		return err
 	}
 
@@ -239,9 +240,11 @@ func renderToFile(ctx context.Context, opt options, input io.Reader) (err error)
 	}
 
 	if err = tmp.Close(); err != nil {
+		//nolint:wrapcheck // os's *PathError already names the operation and the path
 		return err
 	}
 
+	//nolint:wrapcheck // os's *LinkError already names the operation and both paths
 	return os.Rename(tmp.Name(), opt.output)
 }
 
