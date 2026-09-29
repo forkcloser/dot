@@ -23,12 +23,12 @@ import (
 	"github.com/goccy/go-graphviz"
 )
 
-const usage = `usage: dot [-K layout] [-T format] [-o output] [input]
+const usage = `usage: dot [-K engine] [-T format] [-o path] [input]
 
-  -K layout   layout engine: dot (default), neato, fdp, sfdp, circo, twopi,
+  -K engine   layout engine: dot (default), neato, fdp, sfdp, circo, twopi,
               osage, patchwork
   -T format   output format: dot (default), svg, png, jpg
-  -o output   output file (default: standard output)
+  -o path     output file (default: standard output)
   -V          print the version
   -h          print this help
   input       DOT file (default, or "-": standard input)

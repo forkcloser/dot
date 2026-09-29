@@ -12,7 +12,7 @@ go install github.com/forkcloser/dot/cmd/dot@latest
 ## Usage
 
 ```
-dot [-K layout] [-T format] [-o output] [input]
+dot [-K engine] [-T format] [-o path] [input]
 ```
 
 | Flag | Values | Default |
