@@ -19,6 +19,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"strings"
+	"sync"
 
 	"github.com/goccy/go-graphviz"
 )
@@ -138,12 +139,25 @@ func version() string {
 	return "(devel)"
 }
 
+// graphvizMu serializes every call into go-graphviz. v0.2.10 runs them all
+// through one WASM instance per process, set up in a package init, and does
+// not serialize them itself: two renders at once read and write the same
+// guest memory.
+//
+//nolint:gochecknoglobals // it guards a process-wide WASM instance, so it is process-wide too
+var graphvizMu sync.Mutex
+
 // render reads DOT from in, lays it out and writes format to out.
 func render(ctx context.Context, opt options, in io.Reader, out io.Writer) error {
 	src, err := io.ReadAll(in)
 	if err != nil {
 		return fmt.Errorf("read input: %w", err)
 	}
+
+	// Held from the parse, which already runs in the WASM instance, until the
+	// engine is closed: the deferred Close below runs before this Unlock.
+	graphvizMu.Lock()
+	defer graphvizMu.Unlock()
 
 	graph, err := graphviz.ParseBytes(src)
 	if err != nil {

@@ -13,6 +13,8 @@ import (
 const sample = "digraph G { a -> b; b -> c; a -> c }"
 
 func TestParseArgs(t *testing.T) {
+	t.Parallel()
+
 	cases := []struct {
 		args []string
 		want options
@@ -51,6 +53,8 @@ func TestParseArgs(t *testing.T) {
 }
 
 func TestRenderFormats(t *testing.T) {
+	t.Parallel()
+
 	magic := map[string]string{
 		"dot": "digraph",
 		"svg": "<?xml",
@@ -72,6 +76,8 @@ func TestRenderFormats(t *testing.T) {
 }
 
 func TestFileInAndOut(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 	in := filepath.Join(dir, "in.dot")
 	out := filepath.Join(dir, "out.png")
@@ -100,6 +106,8 @@ func TestFileInAndOut(t *testing.T) {
 }
 
 func TestErrors(t *testing.T) {
+	t.Parallel()
+
 	var out, errb bytes.Buffer
 	if code := run([]string{"-Tgif"}, nil, &out, &errb); code != 2 {
 		t.Errorf("bad flag: exit %d, want 2", code)
@@ -131,6 +139,8 @@ func FuzzParseArgs(f *testing.F) {
 }
 
 func TestEmptyInputIsAnError(t *testing.T) {
+	t.Parallel()
+
 	for _, in := range []string{"", "  \n"} {
 		var out, errb bytes.Buffer
 		if code := run([]string{"-Tsvg"}, strings.NewReader(in), &out, &errb); code != 1 {
@@ -147,6 +157,8 @@ func TestEmptyInputIsAnError(t *testing.T) {
 // TestPprofGraph renders what `go tool pprof -dot` emits, the input the
 // limen profile recipe hands to this command.
 func TestPprofGraph(t *testing.T) {
+	t.Parallel()
+
 	src, err := os.ReadFile(filepath.Join("testdata", "pprof.dot"))
 	if err != nil {
 		t.Fatal(err)
@@ -174,6 +186,8 @@ func TestPprofGraph(t *testing.T) {
 // TestFailedRenderLeavesOutputAlone: a render that fails must not touch what
 // is already at -o, and must leave no temporary file beside it.
 func TestFailedRenderLeavesOutputAlone(t *testing.T) {
+	t.Parallel()
+
 	dir := t.TempDir()
 
 	out := filepath.Join(dir, "out.png")
