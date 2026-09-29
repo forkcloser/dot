@@ -47,6 +47,10 @@ type options struct {
 var (
 	errUsage = errors.New("usage")
 
+	// errNoGraph is empty or whitespace-only input, which parses to a nil
+	// graph without an error.
+	errNoGraph = errors.New("no graph found")
+
 	layouts = map[string]graphviz.Layout{
 		"dot": graphviz.DOT, "neato": graphviz.NEATO, "fdp": graphviz.FDP,
 		"sfdp": graphviz.SFDP, "circo": graphviz.CIRCO, "twopi": graphviz.TWOPI,
@@ -148,7 +152,7 @@ func render(ctx context.Context, opt options, in io.Reader, out io.Writer) error
 	// Empty or whitespace-only input parses to a nil graph without an error,
 	// and rendering nil faults inside the WASM engine.
 	if graph == nil {
-		return errors.New("parse input: no graph found")
+		return fmt.Errorf("parse input: %w", errNoGraph)
 	}
 
 	g, err := graphviz.New(ctx)
