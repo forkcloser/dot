@@ -62,20 +62,12 @@ var (
 func parseArgs(args []string) (options, error) {
 	opt := options{layout: graphviz.DOT, format: graphviz.XDOT}
 
-	take := func(index *int, glued string) (string, error) {
-		if glued != "" {
-			return glued, nil
-		}
-
-		*index++
-		if *index >= len(args) {
-			return "", fmt.Errorf("%w: %s needs a value", errUsage, args[*index-1])
-		}
-
-		return args[*index], nil
-	}
-	for index := 0; index < len(args); index++ {
+	// A spaced value flag consumes the argument after it, so the loop moves
+	// the index itself rather than ranging over the slice.
+	index := 0
+	for index < len(args) {
 		arg := args[index]
+
 		switch {
 		case arg == "-h", arg == "--help":
 			opt.help = true
@@ -87,43 +79,59 @@ func parseArgs(args []string) (options, error) {
 			}
 
 			opt.input = arg
-		case strings.HasPrefix(arg, "-K"):
-			value, err := take(&index, arg[2:])
-			if err != nil {
-				return opt, err
-			}
-
-			l, ok := layouts[value]
-			if !ok {
-				return opt, fmt.Errorf("%w: unknown layout %q", errUsage, value)
-			}
-
-			opt.layout = l
-		case strings.HasPrefix(arg, "-T"):
-			value, err := take(&index, arg[2:])
-			if err != nil {
-				return opt, err
-			}
-
-			f, ok := formats[value]
-			if !ok {
-				return opt, fmt.Errorf("%w: unknown format %q", errUsage, value)
-			}
-
-			opt.format = f
-		case strings.HasPrefix(arg, "-o"):
-			value, err := take(&index, arg[2:])
-			if err != nil {
-				return opt, err
-			}
-
-			opt.output = value
 		default:
-			return opt, fmt.Errorf("%w: unknown flag %q", errUsage, arg)
+			var err error
+			if index, err = parseFlag(&opt, args, index); err != nil {
+				return opt, err
+			}
 		}
+
+		index++
 	}
 
 	return opt, nil
+}
+
+// parseFlag reads the value flag at args[index] into opt, its value glued on
+// (-Tpng) or the next argument (-T png), and returns the index of the last
+// argument it consumed.
+func parseFlag(opt *options, args []string, index int) (int, error) {
+	arg := args[index]
+
+	flag, value := arg[:2], arg[2:]
+	if flag != "-K" && flag != "-T" && flag != "-o" {
+		return index, fmt.Errorf("%w: unknown flag %q", errUsage, arg)
+	}
+
+	if value == "" {
+		index++
+		if index >= len(args) {
+			return index, fmt.Errorf("%w: %s needs a value", errUsage, arg)
+		}
+
+		value = args[index]
+	}
+
+	switch flag {
+	case "-K":
+		layout, ok := layouts[value]
+		if !ok {
+			return index, fmt.Errorf("%w: unknown layout %q", errUsage, value)
+		}
+
+		opt.layout = layout
+	case "-T":
+		format, ok := formats[value]
+		if !ok {
+			return index, fmt.Errorf("%w: unknown format %q", errUsage, value)
+		}
+
+		opt.format = format
+	default:
+		opt.output = value
+	}
+
+	return index, nil
 }
 
 func version() string {
