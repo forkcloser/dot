@@ -62,64 +62,64 @@ var (
 func parseArgs(args []string) (options, error) {
 	opt := options{layout: graphviz.DOT, format: graphviz.XDOT}
 
-	take := func(i *int, glued string) (string, error) {
+	take := func(index *int, glued string) (string, error) {
 		if glued != "" {
 			return glued, nil
 		}
 
-		*i++
-		if *i >= len(args) {
-			return "", fmt.Errorf("%w: %s needs a value", errUsage, args[*i-1])
+		*index++
+		if *index >= len(args) {
+			return "", fmt.Errorf("%w: %s needs a value", errUsage, args[*index-1])
 		}
 
-		return args[*i], nil
+		return args[*index], nil
 	}
-	for i := 0; i < len(args); i++ {
-		a := args[i]
+	for index := 0; index < len(args); index++ {
+		arg := args[index]
 		switch {
-		case a == "-h", a == "--help":
+		case arg == "-h", arg == "--help":
 			opt.help = true
-		case a == "-V", a == "--version":
+		case arg == "-V", arg == "--version":
 			opt.version = true
-		case a == "-", !strings.HasPrefix(a, "-"):
+		case arg == "-", !strings.HasPrefix(arg, "-"):
 			if opt.input != "" {
-				return opt, fmt.Errorf("%w: one input at most, got %q and %q", errUsage, opt.input, a)
+				return opt, fmt.Errorf("%w: one input at most, got %q and %q", errUsage, opt.input, arg)
 			}
 
-			opt.input = a
-		case strings.HasPrefix(a, "-K"):
-			v, err := take(&i, a[2:])
+			opt.input = arg
+		case strings.HasPrefix(arg, "-K"):
+			value, err := take(&index, arg[2:])
 			if err != nil {
 				return opt, err
 			}
 
-			l, ok := layouts[v]
+			l, ok := layouts[value]
 			if !ok {
-				return opt, fmt.Errorf("%w: unknown layout %q", errUsage, v)
+				return opt, fmt.Errorf("%w: unknown layout %q", errUsage, value)
 			}
 
 			opt.layout = l
-		case strings.HasPrefix(a, "-T"):
-			v, err := take(&i, a[2:])
+		case strings.HasPrefix(arg, "-T"):
+			value, err := take(&index, arg[2:])
 			if err != nil {
 				return opt, err
 			}
 
-			f, ok := formats[v]
+			f, ok := formats[value]
 			if !ok {
-				return opt, fmt.Errorf("%w: unknown format %q", errUsage, v)
+				return opt, fmt.Errorf("%w: unknown format %q", errUsage, value)
 			}
 
 			opt.format = f
-		case strings.HasPrefix(a, "-o"):
-			v, err := take(&i, a[2:])
+		case strings.HasPrefix(arg, "-o"):
+			value, err := take(&index, arg[2:])
 			if err != nil {
 				return opt, err
 			}
 
-			opt.output = v
+			opt.output = value
 		default:
-			return opt, fmt.Errorf("%w: unknown flag %q", errUsage, a)
+			return opt, fmt.Errorf("%w: unknown flag %q", errUsage, arg)
 		}
 	}
 
@@ -151,16 +151,16 @@ func render(ctx context.Context, opt options, in io.Reader, out io.Writer) error
 		return errors.New("parse input: no graph found")
 	}
 
-	g, err := graphviz.New(ctx)
+	engine, err := graphviz.New(ctx)
 	if err != nil {
 		return fmt.Errorf("start graphviz: %w", err)
 	}
 
-	defer func() { _ = g.Close() }()
+	defer func() { _ = engine.Close() }()
 
-	g.SetLayout(opt.layout)
+	engine.SetLayout(opt.layout)
 
-	if err := g.Render(ctx, graph, opt.format, out); err != nil {
+	if err := engine.Render(ctx, graph, opt.format, out); err != nil {
 		return fmt.Errorf("render: %w", err)
 	}
 
@@ -185,21 +185,21 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	in := stdin
+	input := stdin
 
 	if opt.input != "" && opt.input != "-" {
-		f, err := os.Open(opt.input)
+		file, err := os.Open(opt.input)
 		if err != nil {
 			fmt.Fprintln(stderr, "dot:", err)
 			return 1
 		}
-		defer func() { _ = f.Close() }()
+		defer func() { _ = file.Close() }()
 
-		in = f
+		input = file
 	}
 
 	if opt.output == "" {
-		if err := render(context.Background(), opt, in, stdout); err != nil {
+		if err := render(context.Background(), opt, input, stdout); err != nil {
 			fmt.Fprintln(stderr, "dot:", err)
 			return 1
 		}
@@ -207,7 +207,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	if err := renderToFile(context.Background(), opt, in); err != nil {
+	if err := renderToFile(context.Background(), opt, input); err != nil {
 		fmt.Fprintln(stderr, "dot:", err)
 		return 1
 	}
@@ -219,7 +219,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 // it onto the path only once the render has completed: a failed render, an
 // interrupt or a full disk leaves whatever was at the path untouched rather
 // than a truncated file that a later build would take for a finished one.
-func renderToFile(ctx context.Context, opt options, in io.Reader) (err error) {
+func renderToFile(ctx context.Context, opt options, input io.Reader) (err error) {
 	dir, base := filepath.Split(opt.output)
 
 	tmp, err := os.CreateTemp(dir, "."+base+".*")
@@ -234,7 +234,7 @@ func renderToFile(ctx context.Context, opt options, in io.Reader) (err error) {
 		}
 	}()
 
-	if err = render(ctx, opt, in, tmp); err != nil {
+	if err = render(ctx, opt, input, tmp); err != nil {
 		return err
 	}
 
