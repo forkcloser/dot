@@ -11,3 +11,5 @@ export LINT_GO_LICENSES_FLAGS := '--ignore=github.com/golang/freetype'
 lint: do::lint::go::default do::lint::go::deadcode do::lint::default
 fix: do::fix::go::default do::fix::default
 test: do::test::go::unit do::test::go::race
+# The security workflow runs `just security`.
+security: do::security::default
