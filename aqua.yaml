@@ -26,7 +26,7 @@ packages:
   # are go.mod tools"). aqua's go_install would build it once per tool
   # version, with whichever go ran first, and share that binary.
   # --- farcloser tools (local registry; standard once registered upstream) ---
-  - name: farcloser/limen@v0.5.2 # renovate: depName=farcloser/limen
+  - name: farcloser/limen@v0.6.2 # renovate: depName=farcloser/limen
     registry: local
   # sha256sum and base64 under their bare names; the registry entry says how
   # it is verified.
@@ -36,7 +36,6 @@ packages:
   - name: golang/go@go1.27.1
   - name: casey/just@1.58.0
   - name: koalaman/shellcheck@v0.11.0
-  - name: golangci/golangci-lint@v2.14.0
   - name: google/yamlfmt@v0.21.0
   - name: lycheeverse/lychee@lychee-v0.24.2
   - name: goreleaser/goreleaser@v2.18.2
@@ -45,4 +44,6 @@ packages:
   - name: jqlang/jq@jq-1.8.2
   - name: cli/cli@v2.101.0
   - name: quint-co/quint@v0.32.0 # renovate: depName=quint-co/quint
+    registry: local
+  - name: forkcloser/curl@v8.21.0
     registry: local
