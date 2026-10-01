@@ -1,0 +1,22 @@
+# This project's carve-outs from the Go lint baseline (.limen/lint-go.yaml):
+# the baseline's sections, in its shape, holding only what this project adds,
+# changes or takes out (book/per-language.md, "one baseline, per-project
+# carve-outs"). `just do lint go` renders the two on every run.
+golangci:
+  linters:
+    settings:
+      depguard:
+        rules:
+          main:
+            # The graphviz binding this command is built on. Everything else
+            # stays the baseline's $gostd.
+            allow:
+              - github.com/goccy/go-graphviz
+
+licenses:
+  ignore:
+    # go-graphviz renders PNG and JPG through Freetype-Go, whose dual
+    # FreeType-or-GPLv2 licence text go-licenses cannot classify. This project
+    # takes it on the FreeType terms, and the README's "Licence" section gives
+    # the FreeType Team the credit those terms ask of a binary distribution.
+    - github.com/golang/freetype
