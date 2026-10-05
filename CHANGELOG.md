@@ -7,6 +7,8 @@ command line interface described in `README.md`.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-05
+
 ### Changed
 
 - The engine is forkcloser/go-graphviz v0.3.0, forkcloser's fork of
@@ -14,8 +16,8 @@ command line interface described in `README.md`.
   Graphviz 16.1.0 where v0.2.10 carried 12.1.2, so layouts and renders follow
   Graphviz's own changes between the two, and the fork's own fixes are in its
   [CHANGELOG](https://github.com/forkcloser/go-graphviz/blob/v0.3.0/CHANGELOG.md);
-  the command, its flags and its output formats are unchanged. The fork no longer pulls in
-  disintegration/imaging or flopp/go-findfont.
+  the command, its flags and its output formats are unchanged. The fork no
+  longer pulls in disintegration/imaging or flopp/go-findfont.
 
 ## [1.0.1] - 2026-09-20
 
