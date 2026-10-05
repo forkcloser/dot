@@ -21,7 +21,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/goccy/go-graphviz"
+	"github.com/forkcloser/go-graphviz"
 )
 
 const usage = `usage: dot [-K engine] [-T format] [-o path] [input]

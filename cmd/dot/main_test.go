@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/goccy/go-graphviz"
+	"github.com/forkcloser/go-graphviz"
 )
 
 const sample = "digraph G { a -> b; b -> c; a -> c }"
