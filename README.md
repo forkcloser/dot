@@ -1,9 +1,11 @@
 # dot
 
 A `dot` command that renders Graphviz graphs without a Graphviz
-installation. The engine is [go-graphviz](https://github.com/goccy/go-graphviz),
-which ships Graphviz as WebAssembly, so the result is one static Go binary
-with no C toolchain and no system packages behind it.
+installation. The engine is
+[forkcloser/go-graphviz](https://github.com/forkcloser/go-graphviz),
+forkcloser's fork of goccy/go-graphviz, which ships Graphviz as
+WebAssembly, so the result is one static Go binary with no C toolchain and
+no system packages behind it.
 
 ```
 go install github.com/forkcloser/dot/cmd/dot@latest
@@ -36,7 +38,7 @@ source.
 
 ## Why
 
-go-graphviz keeps its own `dot` command in a nested module that has never
+Upstream go-graphviz keeps its own `dot` command in a nested module that has never
 been tagged and still requires the library at v0.2.5, five releases behind.
 A tool directive on it cannot move. This module is the same thin client on
 the current library, tagged, so a `tool` directive or `go install` pin
@@ -51,7 +53,7 @@ proxy. Before tagging: `just lint` and `just test` green on CI, and
 
 ## Licence
 
-MIT, see `LICENSE`. go-graphviz is MIT; its dependency tree includes
+MIT, see `LICENSE`. forkcloser/go-graphviz is MIT; its dependency tree includes
 `github.com/golang/freetype`, which is dual-licensed FreeType or GPLv2, and
 the dependency license check here allows that one module on the FreeType
 terms. As those terms ask of a binary distribution: this software is based

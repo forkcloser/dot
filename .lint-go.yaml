@@ -11,7 +11,7 @@ golangci:
             # The graphviz binding this command is built on. Everything else
             # stays the baseline's $gostd.
             allow:
-              - github.com/goccy/go-graphviz
+              - github.com/forkcloser/go-graphviz
 
 licenses:
   ignore:
