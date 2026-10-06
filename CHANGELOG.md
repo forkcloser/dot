@@ -7,6 +7,17 @@ command line interface described in `README.md`.
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-05
+
+### Fixed
+
+- PNG and JPEG output, through forkcloser/go-graphviz v0.3.1: edges are
+  drawn as lines on amd64 instead of filled shapes, labels in a TrueType or
+  fallback font are drawn instead of left blank (Linux and Windows), text
+  sits on Graphviz's baseline instead of one font size too high, and a
+  node's explicit empty label stays empty. Details in go-graphviz's
+  [CHANGELOG](https://github.com/forkcloser/go-graphviz/blob/v0.3.1/CHANGELOG.md).
+
 ## [1.1.0] - 2026-10-05
 
 ### Changed
