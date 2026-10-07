@@ -2,7 +2,7 @@ module github.com/forkcloser/dot
 
 go 1.26.0
 
-require github.com/forkcloser/go-graphviz v0.3.1
+require github.com/forkcloser/go-graphviz v0.4.0
 
 require (
 	github.com/fogleman/gg v1.3.0 // indirect
