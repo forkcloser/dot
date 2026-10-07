@@ -7,6 +7,34 @@ command line interface described in `README.md`.
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-07
+
+### Changed
+
+- The engine is forkcloser/go-graphviz v0.4.0. Text is measured with the
+  fonts it is drawn in, the installed ones, as Graphviz's own `dot` does:
+  labels fit their nodes, and the same graph can lay out slightly
+  differently, in every output format, on machines with different fonts.
+- Font names resolve as Graphviz resolves them (PostScript names, family
+  and style words, metric-compatible substitutes), falling back to
+  embedded Go fonts in regular, bold, italic and monospace.
+- Lines scale with the page as in Graphviz's renderers: at the default
+  96 dpi a pen width of 1 is a third wider than before.
+- A node image is drawn in the box `imagescale` and `imagepos` give it,
+  and may be JPEG, GIF, BMP or WebP.
+- A PNG or JPEG page over 256 megapixels, or a node image over 64
+  megapixels, is refused instead of allocated.
+
+### Fixed
+
+- `rotate=90` and `landscape=true` graphs render in PNG and JPEG instead of
+  a blank page.
+- Characters the label's font lacks (Japanese, Chinese, Korean in a Latin
+  font) are drawn from an installed font that has them, not as boxes.
+
+Details in go-graphviz's
+[CHANGELOG](https://github.com/forkcloser/go-graphviz/blob/v0.4.0/CHANGELOG.md).
+
 ## [1.1.1] - 2026-10-05
 
 ### Fixed
