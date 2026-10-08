@@ -48,8 +48,11 @@ tracks releases like any other dependency.
 
 A release is a signed tag on `main`, cut with `just do release vX.Y.Z` by a
 repository admin; `go install` and tool directives take it from the module
-proxy. Before tagging: `just lint` and `just test` green on CI, and
-`CHANGELOG.md` moved from *Unreleased* to the version with the date.
+proxy. Before tagging: `just lint` and `just test` green on CI, and every
+merged pull request's title saying what changed for a user: the release
+notes are those titles, published on the tag's release page with
+`gh release create vX.Y.Z --verify-tag --generate-notes`, and one that
+breaks a consumer carries the `breaking` label.
 
 ## Licence
 
