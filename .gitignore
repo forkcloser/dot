@@ -11,6 +11,8 @@ Desktop.ini
 
 # Build output and Go artifacts
 /build
+# `go build` in the root writes the binary here.
+/dot
 
 # Scratch / work-in-progress files
 # *.local
