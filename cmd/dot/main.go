@@ -1,4 +1,4 @@
-// Command dot renders a Graphviz graph to dot, svg, png or jpg without a
+// Command dot renders a Graphviz graph to dot, xdot, svg, png or jpg without a
 // native graphviz installation: the engine is go-graphviz's WASM build.
 //
 // Usage:
@@ -28,7 +28,7 @@ const usage = `usage: dot [-K engine] [-T format] [-o path] [input]
 
   -K engine   layout engine: dot (default), neato, fdp, sfdp, circo, twopi,
               osage, patchwork
-  -T format   output format: dot (default), svg, png, jpg
+  -T format   output format: dot (default), xdot, svg, png, jpg
   -o path     output file (default: standard output)
   -V          print the version
   -h          print this help
@@ -77,11 +77,14 @@ func layoutNamed(name string) (graphviz.Layout, bool) {
 	}
 }
 
-// formatNamed is the output format by the name -T takes. "dot" is graphviz's
-// xdot: the layout written back as DOT, with the computed positions on it.
+// formatNamed is the output format by the name -T takes, as Graphviz names
+// them: "dot" is the layout written back as DOT with the computed positions
+// on it, "xdot" that plus the drawing operations.
 func formatNamed(name string) (graphviz.Format, bool) {
 	switch name {
 	case "dot":
+		return graphviz.GV, true
+	case "xdot":
 		return graphviz.XDOT, true
 	case "svg":
 		return graphviz.SVG, true
@@ -97,7 +100,7 @@ func formatNamed(name string) (graphviz.Format, bool) {
 // parseArgs accepts graphviz's glued flags (-Tpng) as well as spaced ones,
 // which the standard flag package cannot do.
 func parseArgs(args []string) (options, error) {
-	opt := options{layout: graphviz.DOT, format: graphviz.XDOT}
+	opt := options{layout: graphviz.DOT, format: graphviz.GV}
 
 	// A spaced value flag consumes the argument after it, so the loop moves
 	// the index itself rather than ranging over the slice.

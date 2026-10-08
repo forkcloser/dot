@@ -7,14 +7,25 @@ command line interface described in `README.md`.
 
 ## [Unreleased]
 
-## [1.2.0] - 2026-10-07
+## [1.2.0] - 2026-10-08
+
+### Added
+
+- `-Txdot`: the layout with its drawing operations, as Graphviz's xdot.
+  `-Tdot` stays the layout with positions only.
 
 ### Changed
 
-- The engine is forkcloser/go-graphviz v0.4.0. Text is measured with the
+- The engine is forkcloser/go-graphviz v0.5.0. Text is measured with the
   fonts it is drawn in, the installed ones, as Graphviz's own `dot` does:
   labels fit their nodes, and the same graph can lay out slightly
   differently, in every output format, on machines with different fonts.
+- PNG and JPEG are drawn the way Graphviz's Cairo renderer draws: lines
+  meet in mitred corners and end flat, where they were round; dashed lines
+  are six points on, six off, and dotted lines two on, six off, Graphviz's
+  lengths. A PNG render of a graph of about 40 nodes allocates 7 MB
+  instead of 320 MB and takes half the time. The binary no longer carries
+  `fogleman/gg` or `golang/freetype`.
 - Font names resolve as Graphviz resolves them (PostScript names, family
   and style words, metric-compatible substitutes), falling back to
   embedded Go fonts in regular, bold, italic and monospace.
@@ -31,9 +42,14 @@ command line interface described in `README.md`.
   a blank page.
 - Characters the label's font lacks (Japanese, Chinese, Korean in a Latin
   font) are drawn from an installed font that has them, not as boxes.
+- A node image named by an absolute path is drawn; it was silently left
+  out. A lossless or extended WebP node image, any WebP with alpha, is
+  sized as it is instead of failing the render as a page too large.
+- An attribute the engine could not store (out of WebAssembly memory)
+  fails the render instead of being dropped.
 
 Details in go-graphviz's
-[CHANGELOG](https://github.com/forkcloser/go-graphviz/blob/v0.4.0/CHANGELOG.md).
+[CHANGELOG](https://github.com/forkcloser/go-graphviz/blob/v0.5.0/CHANGELOG.md).
 
 ## [1.1.1] - 2026-10-05
 

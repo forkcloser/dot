@@ -20,7 +20,7 @@ func TestParseArgs(t *testing.T) {
 		want options
 		err  bool
 	}{
-		{nil, options{layout: graphviz.DOT, format: graphviz.XDOT}, false},
+		{nil, options{layout: graphviz.DOT, format: graphviz.GV}, false},
 		{
 			[]string{"-Tpng", "-oout.png", "in.dot"},
 			options{layout: graphviz.DOT, format: graphviz.PNG, output: "out.png", input: "in.dot"},
@@ -31,8 +31,8 @@ func TestParseArgs(t *testing.T) {
 			options{layout: graphviz.NEATO, format: graphviz.SVG, output: "out.svg", input: "-"},
 			false,
 		},
-		{[]string{"-h"}, options{layout: graphviz.DOT, format: graphviz.XDOT, help: true}, false},
-		{[]string{"-V"}, options{layout: graphviz.DOT, format: graphviz.XDOT, version: true}, false},
+		{[]string{"-h"}, options{layout: graphviz.DOT, format: graphviz.GV, help: true}, false},
+		{[]string{"-V"}, options{layout: graphviz.DOT, format: graphviz.GV, version: true}, false},
 		{[]string{"-Tgif"}, options{}, true},
 		{[]string{"-Kbogus"}, options{}, true},
 		{[]string{"-o"}, options{}, true},
@@ -56,10 +56,11 @@ func TestRenderFormats(t *testing.T) {
 	t.Parallel()
 
 	magic := map[string]string{
-		"dot": "digraph",
-		"svg": "<?xml",
-		"png": "\x89PNG",
-		"jpg": "\xff\xd8\xff",
+		"dot":  "digraph",
+		"xdot": "digraph",
+		"svg":  "<?xml",
+		"png":  "\x89PNG",
+		"jpg":  "\xff\xd8\xff",
 	}
 	for format, want := range magic {
 		var out, errb bytes.Buffer
@@ -71,6 +72,19 @@ func TestRenderFormats(t *testing.T) {
 
 		if !strings.HasPrefix(out.String(), want) {
 			t.Errorf("-T%s: output does not start with %q: %q", format, want, out.String()[:min(16, out.Len())])
+		}
+
+		// Both DOT forms carry the layout; only xdot carries the drawing
+		// operations. The two were the same output before go-graphviz 0.5.0
+		// named them apart.
+		if format == "dot" || format == "xdot" {
+			if !strings.Contains(out.String(), "pos=") {
+				t.Errorf("-T%s: output has no positions", format)
+			}
+
+			if drawn := strings.Contains(out.String(), "_draw_"); drawn != (format == "xdot") {
+				t.Errorf("-T%s: _draw_ present = %v", format, drawn)
+			}
 		}
 	}
 }
