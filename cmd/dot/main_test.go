@@ -196,6 +196,43 @@ func TestPprofGraph(t *testing.T) {
 	}
 }
 
+// TestBareOutputName: a -o with no directory part renders beside the working
+// directory's file, wherever the system's temporary directory is; here it is
+// nowhere, which would fail a temporary file made there.
+//
+//nolint:paralleltest // Chdir and Setenv are the process's, not a parallel test's
+func TestBareOutputName(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+
+	for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
+		t.Setenv(name, filepath.Join(dir, "nowhere"))
+	}
+
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"-Tsvg", "-oout.svg"}, strings.NewReader(sample), &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+
+	b, err := os.ReadFile(filepath.Join(dir, "out.svg"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.HasPrefix(b, []byte("<?xml")) {
+		t.Error("output is not an SVG")
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(entries) != 1 {
+		t.Errorf("%d entries beside the output, want the output alone", len(entries))
+	}
+}
+
 // TestFailedRenderLeavesOutputAlone: a render that fails must not touch what
 // is already at -o, and must leave no temporary file beside it.
 func TestFailedRenderLeavesOutputAlone(t *testing.T) {

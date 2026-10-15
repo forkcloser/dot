@@ -268,6 +268,12 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 // than a truncated file that a later build would take for a finished one.
 func renderToFile(ctx context.Context, opt options, input io.Reader) (err error) {
 	dir, base := filepath.Split(opt.output)
+	if dir == "" {
+		// A bare name: beside it is the working directory, not the
+		// system's temporary directory CreateTemp takes "" for, which
+		// may be another filesystem the rename cannot cross.
+		dir = "."
+	}
 
 	tmp, err := os.CreateTemp(dir, "."+base+".*")
 	if err != nil {
