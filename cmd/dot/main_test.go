@@ -75,8 +75,7 @@ func TestRenderFormats(t *testing.T) {
 		}
 
 		// Both DOT forms carry the layout; only xdot carries the drawing
-		// operations. The two were the same output before go-graphviz 0.5.0
-		// named them apart.
+		// operations.
 		if format == "dot" || format == "xdot" {
 			if !strings.Contains(out.String(), "pos=") {
 				t.Errorf("-T%s: output has no positions", format)
