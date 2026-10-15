@@ -20,7 +20,7 @@ dot [-K engine] [-T format] [-o path] [input]
 | Flag | Values | Default |
 |---|---|---|
 | `-K` | `dot`, `neato`, `fdp`, `sfdp`, `circo`, `twopi`, `osage`, `patchwork` | `dot` |
-| `-T` | `dot`, `svg`, `png`, `jpg` | `dot` |
+| `-T` | `dot`, `xdot`, `svg`, `png`, `jpg` | `dot` |
 | `-o` | output file | standard output |
 | input | a DOT file, or `-` | standard input |
 
