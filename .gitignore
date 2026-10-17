@@ -16,7 +16,7 @@ Desktop.ini
 
 # Scratch / work-in-progress files
 # *.local
-_scratch/
+/_scratch
 # WIP_*
 
 # =========================
@@ -58,7 +58,7 @@ _scratch/
 AUDIT.md
 
 # Required by limen (book/mandatory-files.md, ".gitignore").
-.claude
+.claude/
 
 # Required by limen (book/mandatory-files.md, ".gitignore").
 /.build
