@@ -1,6 +1,6 @@
 # DO NOT EDIT MANUALLY.
 # Generic, no project content. Minimal glue: GitHub's own actions pinned by
-# SHA, aqua at .aqua/aqua.yaml's pins, `just` running the recipes a laptop runs. No
+# SHA, hermetic at .hermetic/hermetic.yaml's pins, `just` running the recipes a laptop runs. No
 # third-party actions, hence no egress-filtering action either.
 name: ci
 
@@ -50,29 +50,24 @@ jobs:
           # range against the PR's base branch, which a shallow clone lacks.
           fetch-depth: 0
 
-      - name: Install aqua (pinned, checksum-verified)
-        uses: ./.github/actions/setup-aqua
+      - name: Install hermetic (pinned, verified)
+        uses: ./.github/actions/setup-hermetic
 
       # Not here: turning Defender's real-time scan off. Tried on the windows
       # legs, before the caches, and measured neutral twice against the same
       # commit without it — the slowness is process creation and small-file
       # writes under git-bash, not the scanner.
 
-      # aqua's package store, keyed on the exact pins and per architecture
+      # hermetic's package store, keyed on the exact pins and per architecture
       # (the store holds native binaries). A warm store turns every lazy first
       # use below into a link; the fallback key keeps the tools a pin bump did
       # not touch, and the changed one downloads and verifies as before.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ env.AQUA_ROOT_DIR }}/pkgs
-          key: aqua-pkgs-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.aqua/aqua.yaml', '.aqua/aqua-checksums.json', '.limen/aqua-registry.yaml') }}
+          path: ${{ env.HERMETIC_ROOT_DIR }}/store/pkgs
+          key: aqua-pkgs-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.hermetic/hermetic.yaml', '.hermetic/aqua-checksums.json', '.limen/hermetic-registry.yaml') }}
           restore-keys: |
             aqua-pkgs-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Install pinned tools
-        # Link-only: tools download lazily on first use, checksum-verified; a
-        # job pays only for what its recipes run.
-        run: aqua install --only-link
 
       # The Go build and module caches, plus the linter's (build/cache/, see
       # main.just). The per-platform analysis legs compile the whole module
@@ -117,11 +112,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install aqua (pinned, checksum-verified)
-        uses: ./.github/actions/setup-aqua
-
-      - name: Install pinned tools
-        run: aqua install --only-link
+      - name: Install hermetic (pinned, verified)
+        uses: ./.github/actions/setup-hermetic
 
       # The cached corpus is what makes fuzzing cumulative across runs. Keyed
       # on the fuzz sources so a changed target restarts its corpus;
@@ -151,7 +143,7 @@ jobs:
   # Every pin resolves. The verify legs link only, and a link verifies
   # nothing: an asset that is missing from a release, or that fails its
   # checksum, would merge green and fail at first use. One linux leg pays for
-  # the real install; aqua's package store is cached on the exact pins, so a
+  # the real install; hermetic's package store is cached on the exact pins, so a
   # warm key costs seconds and a changed pin is always a real install. (The
   # Go-built tools are tools/go.mod directives, built by the verify legs.)
   tools:
@@ -164,19 +156,19 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install aqua (pinned, checksum-verified)
-        uses: ./.github/actions/setup-aqua
+      - name: Install hermetic (pinned, verified)
+        uses: ./.github/actions/setup-hermetic
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ${{ env.AQUA_ROOT_DIR }}/pkgs
+          path: ${{ env.HERMETIC_ROOT_DIR }}/store/pkgs
           # The same key as the verify legs', so this job and the linux leg
           # share one store — and no fallback key here: a changed pin must be
           # a real install, which is what this job exists to prove.
-          key: aqua-pkgs-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.aqua/aqua.yaml', '.aqua/aqua-checksums.json', '.limen/aqua-registry.yaml') }}
+          key: aqua-pkgs-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.hermetic/hermetic.yaml', '.hermetic/aqua-checksums.json', '.limen/hermetic-registry.yaml') }}
 
       - name: Install every pinned tool
-        run: aqua install
+        run: hermetic install
 
   # The ONE required status check (defaultRequiredChecks in
   # internal/github/audit.go). Requiring the matrix legs by name would bake
