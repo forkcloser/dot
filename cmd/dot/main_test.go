@@ -199,8 +199,6 @@ func TestPprofGraph(t *testing.T) {
 // TestBareOutputName: a -o with no directory part renders beside the working
 // directory's file, wherever the system's temporary directory is; here it is
 // nowhere, which would fail a temporary file made there.
-//
-//nolint:paralleltest // Chdir and Setenv are the process's, not a parallel test's
 func TestBareOutputName(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
