@@ -299,13 +299,6 @@ func TestOutputPaths(t *testing.T) {
 func TestOutputOverTheInput(t *testing.T) {
 	t.Parallel()
 
-	// The command still holds the input open when it renames the rendering
-	// over it, which Windows refuses ("Access is denied"); held there with
-	// the owner until the input is closed before the rename.
-	if runtime.GOOS == "windows" {
-		t.Skip("held: the input is still open when the rendering is renamed over it")
-	}
-
 	dir := t.TempDir()
 	path := filepath.Join(dir, "graph.dot")
 

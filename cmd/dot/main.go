@@ -11,6 +11,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -235,14 +236,17 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	input := stdin
 
 	if opt.input != "" && opt.input != "-" {
-		file, err := os.Open(opt.input)
+		// Read whole and closed here, not held open through the render: with
+		// -o naming the input, the rendering is renamed over it, which
+		// Windows refuses while a handle is open. render reads its input
+		// whole anyway.
+		src, err := os.ReadFile(opt.input)
 		if err != nil {
 			fmt.Fprintln(stderr, "dot:", err)
 			return 1
 		}
-		defer func() { _ = file.Close() }()
 
-		input = file
+		input = bytes.NewReader(src)
 	}
 
 	if opt.output == "" {
