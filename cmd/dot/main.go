@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/forkcloser/go-graphviz"
+	"github.com/forkcloser/xos"
 )
 
 const usage = `usage: dot [-K engine] [-T format] [-o path] [input]
@@ -236,11 +237,10 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	input := stdin
 
 	if opt.input != "" && opt.input != "-" {
-		// Read whole and closed here, not held open through the render: with
-		// -o naming the input, the rendering is renamed over it, which
-		// Windows refuses while a handle is open. render reads its input
-		// whole anyway.
-		src, err := os.ReadFile(opt.input)
+		// Read whole and closed here, not held open through the render:
+		// render reads its input whole anyway, and with -o naming the input
+		// the rendering is renamed over it.
+		src, err := xos.ReadFile(opt.input)
 		if err != nil {
 			fmt.Fprintln(stderr, "dot:", err)
 			return 1
@@ -279,7 +279,7 @@ func renderToFile(ctx context.Context, opt options, input io.Reader) (err error)
 		dir = "."
 	}
 
-	tmp, err := os.CreateTemp(dir, "."+base+".*")
+	tmp, err := xos.CreateTemp(dir, "."+base+".*")
 	if err != nil {
 		//nolint:wrapcheck // os's *PathError already names the operation and the path
 		return err
@@ -302,7 +302,7 @@ func renderToFile(ctx context.Context, opt options, input io.Reader) (err error)
 	}
 
 	//nolint:wrapcheck // os's *LinkError already names the operation and both paths
-	return os.Rename(tmp.Name(), opt.output)
+	return xos.Rename(tmp.Name(), opt.output)
 }
 
 func main() {
