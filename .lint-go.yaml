@@ -12,6 +12,7 @@ golangci:
             # stays the baseline's $gostd.
             allow:
               - github.com/forkcloser/go-graphviz
+              - github.com/forkcloser/xos
 
 licenses:
   ignore:
