@@ -56,8 +56,7 @@ breaks a consumer carries the `breaking` label.
 
 ## Licence
 
-MIT, see `LICENSE`. forkcloser/go-graphviz is MIT; its dependency tree includes
-`github.com/golang/freetype`, which is dual-licensed FreeType or GPLv2, and
-the dependency license check here allows that one module on the FreeType
-terms. As those terms ask of a binary distribution: this software is based
-in part on the work of the FreeType Team (https://www.freetype.org/).
+MIT, see `LICENSE`. The binary embeds forkcloser/go-graphviz's `graphviz.wasm`,
+built from Graphviz, under the Eclipse Public License 2.0 (`LICENSE-graphviz`),
+and expat, under the MIT license (`LICENSE-expat`); the release archives carry
+both texts.

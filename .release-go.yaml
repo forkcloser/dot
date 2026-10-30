@@ -36,6 +36,12 @@ builds:
 
 archives:
   - formats: ["tar.gz"]
+    # The licences of what the binary embeds, beside the command's own.
+    files:
+      - LICENSE
+      - LICENSE-graphviz
+      - LICENSE-expat
+      - README.md
 
 checksum:
   name_template: checksums.txt

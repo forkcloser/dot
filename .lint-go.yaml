@@ -13,11 +13,3 @@ golangci:
             allow:
               - github.com/forkcloser/go-graphviz
               - github.com/forkcloser/xos
-
-licenses:
-  ignore:
-    # go-graphviz renders PNG and JPG through Freetype-Go, whose dual
-    # FreeType-or-GPLv2 licence text go-licenses cannot classify. This project
-    # takes it on the FreeType terms, and the README's "Licence" section gives
-    # the FreeType Team the credit those terms ask of a binary distribution.
-    - github.com/golang/freetype
