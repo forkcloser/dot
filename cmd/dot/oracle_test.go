@@ -15,7 +15,6 @@ package main
 import (
 	"bytes"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -120,8 +119,7 @@ func TestFlagsReachTheEngine(t *testing.T) {
 func enginePin(t *testing.T) string {
 	t.Helper()
 
-	out, err := exec.CommandContext(t.Context(), "go", "list", "-m", "-f", "{{.Dir}}", "github.com/forkcloser/go-graphviz").
-		Output()
+	out, err := child(t, "go", "list", "-m", "-f", "{{.Dir}}", "github.com/forkcloser/go-graphviz").Output()
 	if err != nil {
 		t.Skipf("the engine module's directory: %v", err)
 	}
@@ -157,7 +155,7 @@ func nativeDot(t *testing.T) string {
 		t.Skip("set DOT_ORACLE to a Graphviz dot to hold the command's DOT to it")
 	}
 
-	out, err := exec.CommandContext(t.Context(), path, "-V").CombinedOutput()
+	out, err := child(t, path, "-V").CombinedOutput()
 	if err != nil {
 		t.Skipf("%s -V: %v", path, err)
 	}
@@ -183,7 +181,7 @@ func nativeDot(t *testing.T) string {
 func native(t *testing.T, path, src string, args ...string) ([]byte, error) {
 	t.Helper()
 
-	cmd := exec.CommandContext(t.Context(), path, args...)
+	cmd := child(t, path, args...)
 	cmd.Stdin = strings.NewReader(src)
 
 	return cmd.Output()
