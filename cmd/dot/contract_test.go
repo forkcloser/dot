@@ -16,6 +16,14 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
+)
+
+// A child that outlives its test binary is not killed with it: every one
+// gets a deadline of its own.
+const (
+	buildDeadline = 5 * time.Minute
+	childDeadline = time.Minute
 )
 
 // binary is the command built once for the package's tests.
@@ -29,8 +37,16 @@ func TestMain(m *testing.M) {
 
 	binary = filepath.Join(dir, "dot"+exeSuffix())
 
-	build := exec.CommandContext(context.Background(), "go", "build", "-o", binary, ".")
-	if out, buildErr := build.CombinedOutput(); buildErr != nil {
+	ctx, cancel := context.WithTimeout(context.Background(), buildDeadline)
+
+	build := exec.CommandContext(ctx, "go", "build", "-o", binary, ".")
+	build.WaitDelay = time.Second
+
+	out, buildErr := build.CombinedOutput()
+
+	cancel()
+
+	if buildErr != nil {
 		panic(string(out))
 	}
 
@@ -55,10 +71,23 @@ type result struct {
 	stdout, stderr string
 }
 
+// child is a command that is killed at its deadline, or when its test ends.
+func child(t *testing.T, name string, args ...string) *exec.Cmd {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(t.Context(), childDeadline)
+	t.Cleanup(cancel)
+
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.WaitDelay = time.Second
+
+	return cmd
+}
+
 func dot(t *testing.T, dir, stdin string, args ...string) result {
 	t.Helper()
 
-	cmd := exec.CommandContext(t.Context(), binary, args...)
+	cmd := child(t, binary, args...)
 	cmd.Dir = dir
 	cmd.Stdin = strings.NewReader(stdin)
 
