@@ -373,3 +373,55 @@ func firstBytes(data []byte) string {
 
 	return string(data)
 }
+
+// A label Graphviz cannot read is reported while the graph is drawn all the
+// same, with the label as text: the rendering is whole, on standard output
+// and at -o alike, the message is on standard error and the exit status is
+// 1, as dot's is.
+func TestReportedErrorWritesTheRenderingAndExitsOne(t *testing.T) {
+	t.Parallel()
+
+	const reported = `digraph { n [shape=record, label="{a|"] }`
+
+	dir := t.TempDir()
+
+	onStdout := dot(t, dir, reported, "-Tsvg")
+	if onStdout.code != 1 {
+		t.Fatalf("exit %d, want 1\nstdout %q\nstderr %q", onStdout.code, onStdout.stdout, onStdout.stderr)
+	}
+
+	if !strings.HasPrefix(onStdout.stdout, "<?xml") || !strings.HasSuffix(onStdout.stdout, "</svg>\n") {
+		t.Fatalf("standard output is not a whole SVG: %q", onStdout.stdout)
+	}
+
+	if !strings.HasPrefix(onStdout.stderr, "dot: ") || !strings.Contains(onStdout.stderr, "bad label format") {
+		t.Fatalf("stderr does not carry Graphviz's message: %q", onStdout.stderr)
+	}
+
+	out := filepath.Join(dir, "out.svg")
+	if err := os.WriteFile(out, []byte("previous"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	toFile := dot(t, dir, reported, "-Tsvg", "-o", out)
+	if toFile.code != 1 {
+		t.Fatalf("-o: exit %d, want 1\nstdout %q\nstderr %q", toFile.code, toFile.stdout, toFile.stderr)
+	}
+
+	if toFile.stdout != "" || toFile.stderr != onStdout.stderr {
+		t.Fatalf("-o: stdout %q, stderr %q, want none and %q", toFile.stdout, toFile.stderr, onStdout.stderr)
+	}
+
+	written, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if string(written) != onStdout.stdout {
+		t.Fatalf("-o holds %q, want the rendering standard output got", firstBytes(written))
+	}
+
+	if n := len(names(t, dir)); n != 1 {
+		t.Fatalf("%d entries beside the output, want 1", n)
+	}
+}
