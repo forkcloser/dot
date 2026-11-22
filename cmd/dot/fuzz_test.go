@@ -2,8 +2,10 @@ package main
 
 // Past the fixed cases: any bytes as the input, under every format. The
 // command never panics or faults in the engine; it exits 0 with a rendering
-// on stdout and nothing on stderr, or 1 with "dot: " on stderr and nothing
-// on stdout; and under -o a failure leaves the path as it was.
+// on stdout and nothing on stderr, or 1 with "dot: " on stderr. An exit 1
+// has a rendering on stdout only for an error Graphviz reported while it
+// drew on, which stderr then says. Under -o the path holds a rendering when
+// stdout had one, and is as it was when it had none.
 
 import (
 	"bytes"
@@ -11,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/forkcloser/go-graphviz/gvc"
 )
 
 func FuzzInput(f *testing.F) {
@@ -42,15 +46,19 @@ func FuzzInput(f *testing.F) {
 				t.Fatalf("exit 0 with stderr %q and %d bytes out", stderr.String(), stdout.Len())
 			}
 		case 1:
-			if stdout.Len() != 0 || !strings.HasPrefix(stderr.String(), "dot: ") {
-				t.Fatalf("exit 1 with stdout %q and stderr %q", stdout.String(), stderr.String())
+			if !strings.HasPrefix(stderr.String(), "dot: ") {
+				t.Fatalf("exit 1 with stderr %q", stderr.String())
+			}
+
+			if stdout.Len() != 0 && !strings.Contains(stderr.String(), gvc.ErrReported.Error()) {
+				t.Fatalf("exit 1 with %d bytes out and no reported error: %q", stdout.Len(), stderr.String())
 			}
 		default:
 			t.Fatalf("exit %d for an input: %q", code, stderr.String())
 		}
 
-		// Under -o: the same verdict, the file written on 0 and untouched
-		// on 1.
+		// Under -o: the same verdict, the file written when stdout had a
+		// rendering and untouched when it had none.
 		dir := t.TempDir()
 		out := filepath.Join(dir, "out")
 
@@ -74,7 +82,9 @@ func FuzzInput(f *testing.F) {
 		// bytes: the engine's first render in a process writes the DOT
 		// without the node default line every later render carries, held
 		// as a seed until the engine is fixed.
-		if code == 0 &&
+		rendered := stdout.Len() != 0
+
+		if rendered &&
 			(len(data) == 0 || !bytes.Equal(data[:min(8, len(data))], stdout.Bytes()[:min(8, stdout.Len())])) {
 			t.Fatalf(
 				"the file is not a rendering like stdout's: %q against %q",
@@ -83,7 +93,7 @@ func FuzzInput(f *testing.F) {
 			)
 		}
 
-		if code == 1 && string(data) != "previous" {
+		if !rendered && string(data) != "previous" {
 			t.Fatalf("a failed render touched the output: %q", firstBytes(data))
 		}
 

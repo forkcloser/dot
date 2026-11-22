@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/forkcloser/go-graphviz"
+	"github.com/forkcloser/go-graphviz/gvc"
 	"github.com/forkcloser/xos"
 )
 
@@ -270,7 +271,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 // it onto the path only once the render has completed: a failed render, an
 // interrupt or a full disk leaves whatever was at the path untouched rather
 // than a truncated file that a later build would take for a finished one.
-func renderToFile(ctx context.Context, opt options, input io.Reader) (err error) {
+func renderToFile(ctx context.Context, opt options, input io.Reader) error {
 	dir, base := filepath.Split(opt.output)
 	if dir == "" {
 		// A bare name: beside it is the working directory, not the
@@ -285,24 +286,35 @@ func renderToFile(ctx context.Context, opt options, input io.Reader) (err error)
 		return err
 	}
 
+	placed := false
+
 	defer func() {
-		if err != nil {
+		if !placed {
 			_ = tmp.Close()
 			_ = os.Remove(tmp.Name())
 		}
 	}()
 
-	if err = render(ctx, opt, input, tmp); err != nil {
-		return err
+	// An error that is gvc.ErrReported came after the whole rendering: the
+	// file goes to its path all the same, and the error to the exit status.
+	reported := render(ctx, opt, input, tmp)
+	if reported != nil && !errors.Is(reported, gvc.ErrReported) {
+		return reported
 	}
 
-	if err = tmp.Close(); err != nil {
+	if err := tmp.Close(); err != nil {
 		//nolint:wrapcheck // os's *PathError already names the operation and the path
 		return err
 	}
 
-	//nolint:wrapcheck // os's *LinkError already names the operation and both paths
-	return xos.Rename(tmp.Name(), opt.output)
+	if err := xos.Rename(tmp.Name(), opt.output); err != nil {
+		//nolint:wrapcheck // os's *LinkError already names the operation and both paths
+		return err
+	}
+
+	placed = true
+
+	return reported
 }
 
 func main() {
