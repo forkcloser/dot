@@ -28,7 +28,10 @@ Flags take Graphviz's glued form (`-Tpng`, `-oout.png`) as well as the spaced
 one. `-V` prints the version, `-h` the usage. Exit status is 0 on success, 1
 on an input or rendering error, 2 on a usage error. An error Graphviz reports
 while it goes on drawing (a record or HTML label it cannot read) is a status 1
-with the rendering written all the same, as with Graphviz's `dot`.
+with the rendering written all the same, as with Graphviz's `dot`. An input
+with no graph in it, empty or comments alone, is nothing to draw: status 0 and
+nothing written, no output file made or replaced, as with Graphviz's `dot`
+again.
 
 ```
 go tool pprof -dot cpu.prof | dot -Tpng -o profile.png

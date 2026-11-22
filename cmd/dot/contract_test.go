@@ -153,7 +153,6 @@ func TestExitStatusesAndStreams(t *testing.T) {
 		{"a missing file", "", []string{filepath.Join(dir, "missing.dot")}, 1, "", false},
 		{"a directory as input", "", []string{dir}, 1, "", false},
 		{"a syntax error", "digraph { a -> ", nil, 1, "", false},
-		{"empty input", "", nil, 1, "", false},
 		{"an undirected edge in a digraph", "digraph { a -- b }", nil, 1, "", false},
 	}
 
@@ -193,6 +192,112 @@ func TestExitStatusesAndStreams(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// A text with no graph in it, empty, blank or comments alone, is nothing to
+// draw and no failure, as with Graphviz's dot: exit 0, nothing on either
+// stream, and with -o no file made and the one at the path left as it was.
+// A text that cannot be read stays a failure.
+func TestATextWithNoGraphIsNothingToDraw(t *testing.T) {
+	t.Parallel()
+
+	for name, text := range map[string]string{
+		"empty":               "",
+		"blank":               " \t\n\n",
+		"a line comment":      "// nothing\n",
+		"a block comment":     "/* nothing */",
+		"a preprocessor line": "# 1 \"nothing\"\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			dir := t.TempDir()
+
+			for _, format := range []string{"dot", "svg", "png"} {
+				got := dot(t, dir, text, "-T"+format)
+				if got.code != 0 || got.stdout != "" || got.stderr != "" {
+					t.Errorf(
+						"-T%s: exit %d, stdout %q, stderr %q; want 0 and nothing",
+						format,
+						got.code,
+						got.stdout,
+						got.stderr,
+					)
+				}
+			}
+
+			if got := dot(
+				t,
+				dir,
+				text,
+				"-Tsvg",
+				"-o",
+				"new.svg",
+			); got.code != 0 || got.stdout != "" ||
+				got.stderr != "" {
+				t.Errorf(
+					"-o to a new path: exit %d, stdout %q, stderr %q; want 0 and nothing",
+					got.code,
+					got.stdout,
+					got.stderr,
+				)
+			}
+
+			if entries := names(t, dir); len(entries) != 0 {
+				t.Errorf("-o to a new path left %v in the directory, want nothing", entries)
+			}
+
+			kept := filepath.Join(dir, "kept.svg")
+			if err := os.WriteFile(kept, []byte("previous"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+
+			if got := dot(
+				t,
+				dir,
+				text,
+				"-Tsvg",
+				"-o",
+				"kept.svg",
+			); got.code != 0 || got.stdout != "" ||
+				got.stderr != "" {
+				t.Errorf(
+					"-o over a file: exit %d, stdout %q, stderr %q; want 0 and nothing",
+					got.code,
+					got.stdout,
+					got.stderr,
+				)
+			}
+
+			if data, err := os.ReadFile(kept); err != nil || string(data) != "previous" {
+				t.Errorf("-o over a file left %q (%v), want it as it was", data, err)
+			}
+
+			if entries := names(t, dir); len(entries) != 1 {
+				t.Errorf("-o over a file left %v in the directory, want the one file", entries)
+			}
+
+			t.Run("as Graphviz's dot has it", func(t *testing.T) {
+				out, err := native(t, nativeDot(t), text, "-Tsvg")
+				if err != nil || len(out) != 0 {
+					t.Errorf("the native dot wrote %d bytes and returned %v, want nothing and success", len(out), err)
+				}
+			})
+		})
+	}
+
+	for name, text := range map[string]string{"a graph cut short": "digraph { a -> ", "a word": "nothing"} {
+		if got := dot(t, t.TempDir(), text, "-Tsvg"); got.code != 1 || got.stdout != "" ||
+			!strings.HasPrefix(got.stderr, "dot: parse input:") {
+			t.Errorf(
+				"%s: exit %d, stdout %q, stderr %q; want 1 and a parse error",
+				name,
+				got.code,
+				got.stdout,
+				got.stderr,
+			)
+		}
 	}
 }
 
