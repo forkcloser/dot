@@ -11,7 +11,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -22,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/forkcloser/go-graphviz"
+	"github.com/forkcloser/go-graphviz/cgraph"
 	"github.com/forkcloser/go-graphviz/gvc"
 	"github.com/forkcloser/xos"
 )
@@ -47,13 +47,7 @@ type options struct {
 	help    bool
 }
 
-var (
-	errUsage = errors.New("usage")
-
-	// errNoGraph is empty or whitespace-only input, which parses to a nil
-	// graph without an error.
-	errNoGraph = errors.New("no graph found")
-)
+var errUsage = errors.New("usage")
 
 // layoutNamed is the layout engine graphviz knows by name.
 func layoutNamed(name string) (graphviz.Layout, bool) {
@@ -184,23 +178,8 @@ func version() string {
 	return "(devel)"
 }
 
-// render reads DOT from in, lays it out and writes format to out.
-func render(ctx context.Context, opt options, in io.Reader, out io.Writer) error {
-	src, err := io.ReadAll(in)
-	if err != nil {
-		return fmt.Errorf("read input: %w", err)
-	}
-
-	graph, err := graphviz.ParseBytes(src)
-	if err != nil {
-		return fmt.Errorf("parse input: %w", err)
-	}
-	// Empty or whitespace-only input parses to a nil graph without an error,
-	// and rendering nil faults inside the WASM engine.
-	if graph == nil {
-		return fmt.Errorf("parse input: %w", errNoGraph)
-	}
-
+// render lays graph out and writes it to out in the format asked for.
+func render(ctx context.Context, opt options, graph *graphviz.Graph, out io.Writer) error {
 	engine, err := graphviz.New(ctx)
 	if err != nil {
 		return fmt.Errorf("start graphviz: %w", err)
@@ -215,6 +194,23 @@ func render(ctx context.Context, opt options, in io.Reader, out io.Writer) error
 	}
 
 	return nil
+}
+
+// read is the DOT text of the input: the file named, or standard input.
+func read(opt options, stdin io.Reader) ([]byte, error) {
+	if opt.input != "" && opt.input != "-" {
+		// Read whole and closed here, not held open through the render:
+		// with -o naming the input, the rendering is renamed over it.
+		//nolint:wrapcheck // os's *PathError already names the operation and the path
+		return xos.ReadFile(opt.input)
+	}
+
+	src, err := io.ReadAll(stdin)
+	if err != nil {
+		return nil, fmt.Errorf("read input: %w", err)
+	}
+
+	return src, nil
 }
 
 func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
@@ -235,31 +231,34 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 0
 	}
 
-	input := stdin
-
-	if opt.input != "" && opt.input != "-" {
-		// Read whole and closed here, not held open through the render:
-		// render reads its input whole anyway, and with -o naming the input
-		// the rendering is renamed over it.
-		src, err := xos.ReadFile(opt.input)
-		if err != nil {
-			fmt.Fprintln(stderr, "dot:", err)
-			return 1
-		}
-
-		input = bytes.NewReader(src)
+	src, err := read(opt, stdin)
+	if err != nil {
+		fmt.Fprintln(stderr, "dot:", err)
+		return 1
 	}
+
+	graph, err := graphviz.ParseBytes(src)
+
+	switch {
+	case errors.Is(err, cgraph.ErrNoGraph):
+		// A text with no graph in it, empty or comments alone, is nothing to
+		// draw: as Graphviz's dot, nothing is written, no file is made or
+		// replaced, and that is no failure.
+		return 0
+	case err != nil:
+		fmt.Fprintln(stderr, "dot: parse input:", err)
+		return 1
+	}
+
+	defer func() { _ = graph.Close() }()
 
 	if opt.output == "" {
-		if err := render(context.Background(), opt, input, stdout); err != nil {
-			fmt.Fprintln(stderr, "dot:", err)
-			return 1
-		}
-
-		return 0
+		err = render(context.Background(), opt, graph, stdout)
+	} else {
+		err = renderToFile(context.Background(), opt, graph)
 	}
 
-	if err := renderToFile(context.Background(), opt, input); err != nil {
+	if err != nil {
 		fmt.Fprintln(stderr, "dot:", err)
 		return 1
 	}
@@ -271,7 +270,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 // it onto the path only once the render has completed: a failed render, an
 // interrupt or a full disk leaves whatever was at the path untouched rather
 // than a truncated file that a later build would take for a finished one.
-func renderToFile(ctx context.Context, opt options, input io.Reader) error {
+func renderToFile(ctx context.Context, opt options, graph *graphviz.Graph) error {
 	dir, base := filepath.Split(opt.output)
 	if dir == "" {
 		// A bare name: beside it is the working directory, not the
@@ -297,7 +296,7 @@ func renderToFile(ctx context.Context, opt options, input io.Reader) error {
 
 	// An error that is gvc.ErrReported came after the whole rendering: the
 	// file goes to its path all the same, and the error to the exit status.
-	reported := render(ctx, opt, input, tmp)
+	reported := render(ctx, opt, graph, tmp)
 	if reported != nil && !errors.Is(reported, gvc.ErrReported) {
 		return reported
 	}

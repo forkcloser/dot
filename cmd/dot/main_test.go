@@ -151,22 +151,6 @@ func FuzzParseArgs(f *testing.F) {
 	})
 }
 
-func TestEmptyInputIsAnError(t *testing.T) {
-	t.Parallel()
-
-	for _, in := range []string{"", "  \n"} {
-		var out, errb bytes.Buffer
-		if code := run([]string{"-Tsvg"}, strings.NewReader(in), &out, &errb); code != 1 {
-			t.Errorf("%q: exit %d, want 1", in, code)
-		}
-		// A fresh engine parses empty input to a nil graph; one that has
-		// parsed before reports a syntax error. Either is a parse error.
-		if !strings.HasPrefix(errb.String(), "dot: parse input:") {
-			t.Errorf("%q: stderr %q", in, errb.String())
-		}
-	}
-}
-
 // TestPprofGraph renders what `go tool pprof -dot` emits, the input the
 // limen profile recipe hands to this command.
 func TestPprofGraph(t *testing.T) {

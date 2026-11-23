@@ -2,18 +2,22 @@ package main
 
 // Past the fixed cases: any bytes as the input, under every format. The
 // command never panics or faults in the engine; it exits 0 with a rendering
-// on stdout and nothing on stderr, or 1 with "dot: " on stderr. An exit 1
-// has a rendering on stdout only for an error Graphviz reported while it
-// drew on, which stderr then says. Under -o the path holds a rendering when
-// stdout had one, and is as it was when it had none.
+// on stdout and nothing on stderr, or 1 with "dot: " on stderr. An exit 0
+// with nothing on stdout is a text with no graph in it, and only that. An
+// exit 1 has a rendering on stdout only for an error Graphviz reported
+// while it drew on, which stderr then says. Under -o the path holds a
+// rendering when stdout had one, and is as it was when it had none.
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/forkcloser/go-graphviz"
+	"github.com/forkcloser/go-graphviz/cgraph"
 	"github.com/forkcloser/go-graphviz/gvc"
 )
 
@@ -42,8 +46,17 @@ func FuzzInput(f *testing.F) {
 
 		switch code {
 		case 0:
-			if stderr.Len() != 0 || stdout.Len() == 0 {
-				t.Fatalf("exit 0 with stderr %q and %d bytes out", stderr.String(), stdout.Len())
+			if stderr.Len() != 0 {
+				t.Fatalf("exit 0 with stderr %q", stderr.String())
+			}
+
+			parsed, err := graphviz.ParseBytes([]byte(input))
+			if parsed != nil {
+				_ = parsed.Close()
+			}
+
+			if (stdout.Len() == 0) != errors.Is(err, cgraph.ErrNoGraph) {
+				t.Fatalf("exit 0 with %d bytes out for a text that parses to %v", stdout.Len(), err)
 			}
 		case 1:
 			if !strings.HasPrefix(stderr.String(), "dot: ") {
