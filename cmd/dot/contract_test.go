@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -174,14 +175,16 @@ func TestExitStatusesAndStreams(t *testing.T) {
 				t.Fatalf("stdout %q, want a prefix %q", got.stdout, c.stdout)
 			}
 
-			switch c.code {
-			case 0:
+			switch {
+			case c.code == 0 && c.stdout == "":
+				// -V: its one line is on standard error, where Graphviz's
+				// dot prints its own, and standard output has nothing.
+				if got.stdout != "" || !versionLine.MatchString(got.stderr) {
+					t.Fatalf("stdout %q, stderr %q; want nothing and the version line", got.stdout, got.stderr)
+				}
+			case c.code == 0:
 				if got.stderr != "" {
 					t.Fatalf("stderr on success: %q", got.stderr)
-				}
-
-				if c.stdout == "" && strings.TrimSpace(got.stdout) == "" {
-					t.Fatalf("no version printed: %q", got.stdout)
 				}
 			default:
 				if got.stdout != "" {
@@ -281,6 +284,63 @@ func TestFailuresExitAsGraphvizsDot(t *testing.T) {
 			})
 		})
 	}
+}
+
+// versionLine is what -V prints: Graphviz's dot's line, with this command's
+// version where that one has its build date.
+var versionLine = regexp.MustCompile(`^dot - graphviz version (\d+\.\d+\.\d+) \(forkcloser/dot \S+\)\n$`)
+
+// -V prints one line on standard error and exits 0, as Graphviz's dot does,
+// and the line has that one's shape, so what reads the Graphviz release out
+// of the one reads it out of the other. The release is the one the engine
+// embeds.
+func TestVersionIsGraphvizsLine(t *testing.T) {
+	t.Parallel()
+
+	got := dot(t, t.TempDir(), "", "-V")
+
+	match := versionLine.FindStringSubmatch(got.stderr)
+	if got.code != 0 || got.stdout != "" || match == nil {
+		t.Fatalf(
+			"exit %d, stdout %q, stderr %q; want 0, nothing and the version line",
+			got.code,
+			got.stdout,
+			got.stderr,
+		)
+	}
+
+	t.Run("the release is the engine's", func(t *testing.T) {
+		t.Parallel()
+
+		if pin := enginePin(t); match[1] != pin {
+			t.Errorf("-V names Graphviz %s, the engine is built from %s", match[1], pin)
+		}
+	})
+
+	t.Run("as Graphviz's dot has it", func(t *testing.T) {
+		t.Parallel()
+
+		cmd := child(t, nativeDot(t), "-V")
+
+		var stdout, stderr bytes.Buffer
+
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+
+		if err := cmd.Run(); err != nil || stdout.Len() != 0 {
+			t.Fatalf("the native dot: %v, stdout %q", err, stdout.String())
+		}
+
+		// The same words up to the release, one line, a parenthesis after.
+		native := regexp.MustCompile(`^dot - graphviz version (\d+\.\d+\.\d+) \(.+\)\n$`).
+			FindStringSubmatch(stderr.String())
+		if native == nil {
+			t.Fatalf("the native dot's line is %q, not the shape -V follows", stderr.String())
+		}
+
+		if majorMinor(native[1]) != majorMinor(match[1]) {
+			t.Errorf("the native dot is %s, -V names %s", native[1], match[1])
+		}
+	})
 }
 
 // The first of -?, -h and -V on the command line is the whole command, as

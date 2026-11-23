@@ -35,7 +35,7 @@ const usage = `usage: dot [-K engine] [-T format] [-o path] [input]
               osage, patchwork
   -T format   output format: dot (default), xdot, svg, png, jpg
   -o path     output file (default: standard output)
-  -V          print the version
+  -V          print the version, on standard error
   -h, -?      print this help
   input       DOT file (default, or "-": standard input)
 `
@@ -188,12 +188,21 @@ func parseFlag(opt *options, args []string, index int) (int, error) {
 	return index, nil
 }
 
-func version() string {
-	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" {
-		return bi.Main.Version
+// version is the line -V prints, in the shape of Graphviz's dot's: the
+// Graphviz release the engine embeds where Graphviz's dot names its own, and
+// this command's version where that one puts its build date.
+func version() (string, error) {
+	engine, err := graphviz.Version()
+	if err != nil {
+		return "", fmt.Errorf("the engine's version: %w", err)
 	}
 
-	return "(devel)"
+	own := "devel"
+	if bi, ok := debug.ReadBuildInfo(); ok && bi.Main.Version != "" && bi.Main.Version != "(devel)" {
+		own = bi.Main.Version
+	}
+
+	return fmt.Sprintf("dot - graphviz version %s (forkcloser/dot %s)", engine, own), nil
 }
 
 // render lays graph out and writes it to out in the format asked for.
@@ -245,7 +254,16 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprint(stdout, usage)
 		return 0
 	case opt.version:
-		fmt.Fprintln(stdout, version())
+		var line string
+
+		if line, err = version(); err != nil {
+			fmt.Fprintln(stderr, "dot:", err)
+			return statusFailed
+		}
+
+		// On standard error, where Graphviz's dot prints its own.
+		fmt.Fprintln(stderr, line)
+
 		return 0
 	}
 
