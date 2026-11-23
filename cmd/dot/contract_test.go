@@ -3,8 +3,8 @@ package main
 // The command's contract at the process boundary, from the README: the
 // flags in their glued and spaced forms, -V and -h, the input as a file,
 // "-" or standard input, -o as a path in every shape, and the exit
-// statuses 0, 1 and 2 with the usage on stderr for 2. Each case runs the
-// built binary in a child.
+// statuses 0, 1 and 2 with the usage on stderr for a command line the
+// command cannot take. Each case runs the built binary in a child.
 
 import (
 	"bytes"
@@ -143,15 +143,15 @@ func TestExitStatusesAndStreams(t *testing.T) {
 		{"-h beats a bad graph", "nonsense", []string{"-h"}, 0, "usage:", false},
 		{"-V beats a bad graph", "nonsense", []string{"-V"}, 0, "", false},
 		{"-h with -V", "", []string{"-V", "-h"}, 0, "usage:", false},
-		{"unknown flag", graph, []string{"-x"}, 2, "", true},
-		{"unknown format", graph, []string{"-Tgif"}, 2, "", true},
-		{"unknown layout", graph, []string{"-Kbogus"}, 2, "", true},
-		{"a flag without its value", graph, []string{"-o"}, 2, "", true},
-		{"two inputs", graph, []string{in, in}, 2, "", true},
-		{"a long flag that is not help or version", graph, []string{"--format=svg"}, 2, "", true},
-		{"usage error beats a missing file", "", []string{"-Tgif", filepath.Join(dir, "missing")}, 2, "", true},
-		{"a missing file", "", []string{filepath.Join(dir, "missing.dot")}, 1, "", false},
-		{"a directory as input", "", []string{dir}, 1, "", false},
+		{"unknown flag", graph, []string{"-x"}, 1, "", true},
+		{"unknown format", graph, []string{"-Tgif"}, 1, "", true},
+		{"unknown layout", graph, []string{"-Kbogus"}, 1, "", true},
+		{"a flag without its value", graph, []string{"-o"}, 1, "", true},
+		{"two inputs", graph, []string{in, in}, 1, "", true},
+		{"a long flag that is not help or version", graph, []string{"--format=svg"}, 1, "", true},
+		{"usage error beats a missing file", "", []string{"-Tgif", filepath.Join(dir, "missing")}, 1, "", true},
+		{"a missing file", "", []string{filepath.Join(dir, "missing.dot")}, 2, "", false},
+		{"a directory as input", "", []string{dir}, 2, "", false},
 		{"a syntax error", "digraph { a -> ", nil, 1, "", false},
 		{"an undirected edge in a digraph", "digraph { a -- b }", nil, 1, "", false},
 	}
@@ -191,6 +191,89 @@ func TestExitStatusesAndStreams(t *testing.T) {
 					t.Fatalf("usage on stderr = %v, want %v:\n%s", !c.usage, c.usage, got.stderr)
 				}
 			}
+		})
+	}
+}
+
+// The statuses of a failure are those of Graphviz's dot: 2 for an input that
+// cannot be read, 1 for a command line it cannot take. Each case is held to
+// the native dot when there is one; a directory as the input, where the
+// command differs from it on purpose, is in the table above alone.
+func TestFailuresExitAsGraphvizsDot(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	if err := os.WriteFile(filepath.Join(dir, "in.dot"), []byte(graph), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// A file that is there and may not be opened. Where the mode does not
+	// refuse the open (Windows, a run as root), the case is skipped.
+	if err := os.WriteFile(filepath.Join(dir, "closed.dot"), []byte(graph), 0o000); err != nil {
+		t.Fatal(err)
+	}
+
+	closed, err := os.Open(filepath.Join(dir, "closed.dot"))
+	if err == nil {
+		_ = closed.Close()
+	}
+
+	cases := []struct {
+		name string
+		args []string
+		code int
+		skip bool
+	}{
+		{"a file that is not there", []string{"missing.dot"}, 2, false},
+		{"a file that may not be opened", []string{"closed.dot"}, 2, err == nil},
+		{"an empty name", []string{""}, 2, false},
+		{"a flag neither knows", []string{"-Q", "in.dot"}, 1, false},
+		{"a format neither knows", []string{"-Tnope", "in.dot"}, 1, false},
+		{"a layout neither knows", []string{"-Knope", "in.dot"}, 1, false},
+		{"-T without its value", []string{"in.dot", "-T"}, 1, false},
+		{"-K without its value", []string{"in.dot", "-K"}, 1, false},
+		{"-o without its value", []string{"in.dot", "-o"}, 1, false},
+		{"a bad flag before a missing file", []string{"-Tnope", "missing.dot"}, 1, false},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+
+			if c.skip {
+				t.Skip("the file opens whatever its mode")
+			}
+
+			// A graph waits on standard input: none of these reads it.
+			got := dot(t, dir, graph, c.args...)
+			if got.code != c.code || got.stdout != "" || !strings.HasPrefix(got.stderr, "dot: ") {
+				t.Fatalf(
+					"exit %d, stdout %q, stderr %q; want %d, nothing and a message",
+					got.code,
+					got.stdout,
+					got.stderr,
+					c.code,
+				)
+			}
+
+			t.Run("as Graphviz's dot has it", func(t *testing.T) {
+				cmd := child(t, nativeDot(t), c.args...)
+				cmd.Dir = dir
+				cmd.Stdin = strings.NewReader(graph)
+
+				out, err := cmd.Output()
+
+				exit, ok := errors.AsType[*exec.ExitError](err)
+				if !ok || exit.ExitCode() != c.code || len(out) != 0 {
+					t.Errorf(
+						"the native dot wrote %d bytes and returned %v, want nothing and exit %d",
+						len(out),
+						err,
+						c.code,
+					)
+				}
+			})
 		})
 	}
 }
