@@ -8,6 +8,9 @@
 // The input is a file in the DOT language, or standard input when absent or
 // "-". Without -o the rendering goes to standard output. Flags accept both the
 // glued form graphviz users type (-Tpng, -oout.png) and the spaced one.
+//
+// The exit statuses are those of Graphviz's dot: 0 on success, 2 for an input
+// that cannot be read, 1 for every other failure.
 package main
 
 import (
@@ -39,15 +42,26 @@ const usage = `usage: dot [-K engine] [-T format] [-o path] [input]
 
 // options is the parsed command line.
 type options struct {
-	layout  graphviz.Layout
-	format  graphviz.Format
-	output  string
-	input   string
+	layout graphviz.Layout
+	format graphviz.Format
+	output string
+	input  string
+	// named says an input was given: an empty name is one, a file that
+	// cannot be opened, and not standard input.
+	named   bool
 	version bool
 	help    bool
 }
 
 var errUsage = errors.New("usage")
+
+// The statuses a failure exits with, as Graphviz's dot has them: an input it
+// cannot read is told apart from every other failure, a command line it
+// cannot take included.
+const (
+	statusFailed  = 1
+	statusNoInput = 2
+)
 
 // layoutNamed is the layout engine graphviz knows by name.
 func layoutNamed(name string) (graphviz.Layout, bool) {
@@ -110,11 +124,11 @@ func parseArgs(args []string) (options, error) {
 		case arg == "-V", arg == "--version":
 			opt.version = true
 		case arg == "-", !strings.HasPrefix(arg, "-"):
-			if opt.input != "" {
+			if opt.named {
 				return opt, fmt.Errorf("%w: one input at most, got %q and %q", errUsage, opt.input, arg)
 			}
 
-			opt.input = arg
+			opt.input, opt.named = arg, true
 		default:
 			var err error
 			if index, err = parseFlag(&opt, args, index); err != nil {
@@ -198,7 +212,7 @@ func render(ctx context.Context, opt options, graph *graphviz.Graph, out io.Writ
 
 // read is the DOT text of the input: the file named, or standard input.
 func read(opt options, stdin io.Reader) ([]byte, error) {
-	if opt.input != "" && opt.input != "-" {
+	if opt.named && opt.input != "-" {
 		// Read whole and closed here, not held open through the render:
 		// with -o naming the input, the rendering is renamed over it.
 		//nolint:wrapcheck // os's *PathError already names the operation and the path
@@ -219,7 +233,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "dot:", err)
 		fmt.Fprint(stderr, usage)
 
-		return 2
+		return statusFailed
 	}
 
 	switch {
@@ -234,7 +248,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	src, err := read(opt, stdin)
 	if err != nil {
 		fmt.Fprintln(stderr, "dot:", err)
-		return 1
+		return statusNoInput
 	}
 
 	graph, err := graphviz.ParseBytes(src)
@@ -247,7 +261,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 0
 	case err != nil:
 		fmt.Fprintln(stderr, "dot: parse input:", err)
-		return 1
+		return statusFailed
 	}
 
 	defer func() { _ = graph.Close() }()
@@ -260,7 +274,7 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 
 	if err != nil {
 		fmt.Fprintln(stderr, "dot:", err)
-		return 1
+		return statusFailed
 	}
 
 	return 0

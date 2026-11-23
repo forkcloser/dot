@@ -23,12 +23,12 @@ func TestParseArgs(t *testing.T) {
 		{nil, options{layout: graphviz.DOT, format: graphviz.GV}, false},
 		{
 			[]string{"-Tpng", "-oout.png", "in.dot"},
-			options{layout: graphviz.DOT, format: graphviz.PNG, output: "out.png", input: "in.dot"},
+			options{layout: graphviz.DOT, format: graphviz.PNG, output: "out.png", input: "in.dot", named: true},
 			false,
 		},
 		{
 			[]string{"-T", "svg", "-o", "out.svg", "-K", "neato", "-"},
-			options{layout: graphviz.NEATO, format: graphviz.SVG, output: "out.svg", input: "-"},
+			options{layout: graphviz.NEATO, format: graphviz.SVG, output: "out.svg", input: "-", named: true},
 			false,
 		},
 		{[]string{"-h"}, options{layout: graphviz.DOT, format: graphviz.GV, help: true}, false},
@@ -38,6 +38,8 @@ func TestParseArgs(t *testing.T) {
 		{[]string{"-o"}, options{}, true},
 		{[]string{"-x"}, options{}, true},
 		{[]string{"a.dot", "b.dot"}, options{}, true},
+		{[]string{""}, options{layout: graphviz.DOT, format: graphviz.GV, named: true}, false},
+		{[]string{"", ""}, options{}, true},
 	}
 	for _, c := range cases {
 		got, err := parseArgs(c.args)
@@ -122,12 +124,12 @@ func TestErrors(t *testing.T) {
 	t.Parallel()
 
 	var out, errb bytes.Buffer
-	if code := run([]string{"-Tgif"}, nil, &out, &errb); code != 2 {
-		t.Errorf("bad flag: exit %d, want 2", code)
+	if code := run([]string{"-Tgif"}, nil, &out, &errb); code != 1 {
+		t.Errorf("bad flag: exit %d, want 1", code)
 	}
 
-	if code := run([]string{filepath.Join(t.TempDir(), "missing.dot")}, nil, &out, &errb); code != 1 {
-		t.Errorf("missing input: exit %d, want 1", code)
+	if code := run([]string{filepath.Join(t.TempDir(), "missing.dot")}, nil, &out, &errb); code != 2 {
+		t.Errorf("missing input: exit %d, want 2", code)
 	}
 
 	if code := run(nil, strings.NewReader("digraph { a -> "), &out, &errb); code != 1 {

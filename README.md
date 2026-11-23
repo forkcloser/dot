@@ -25,13 +25,22 @@ dot [-K engine] [-T format] [-o path] [input]
 | input | a DOT file, or `-` | standard input |
 
 Flags take Graphviz's glued form (`-Tpng`, `-oout.png`) as well as the spaced
-one. `-V` prints the version, `-h` the usage. Exit status is 0 on success, 1
-on an input or rendering error, 2 on a usage error. An error Graphviz reports
-while it goes on drawing (a record or HTML label it cannot read) is a status 1
-with the rendering written all the same, as with Graphviz's `dot`. An input
-with no graph in it, empty or comments alone, is nothing to draw: status 0 and
-nothing written, no output file made or replaced, as with Graphviz's `dot`
-again.
+one. `-V` prints the version, `-h` the usage.
+
+The exit statuses are those of Graphviz's `dot`: 0 on success, 2 when the
+input cannot be read (a file that is not there or may not be opened), and 1
+for every other failure: a flag, a format or a layout the command does not
+know, a graph that does not parse, a rendering that fails, an output that
+cannot be written. An error Graphviz reports while it goes on drawing (a
+record or HTML label it cannot read) is a status 1 with the rendering written
+all the same. An input with no graph in it, empty or comments alone, is
+nothing to draw: status 0 and nothing written, no output file made or
+replaced.
+
+Two differences from Graphviz's `dot` are kept on purpose. `-` names standard
+input, where Graphviz's `dot` takes it for an unknown option. A directory
+given as the input is an error, with status 2 like any input that cannot be
+read, where Graphviz's `dot` reads nothing from it, says nothing and exits 0.
 
 ```
 go tool pprof -dot cpu.prof | dot -Tpng -o profile.png
