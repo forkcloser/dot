@@ -42,10 +42,29 @@ all the same. An input with no graph in it, empty or comments alone, is
 nothing to draw: status 0 and nothing written, no output file made or
 replaced.
 
-Two differences from Graphviz's `dot` are kept on purpose. `-` names standard
-input, where Graphviz's `dot` takes it for an unknown option. A directory
-given as the input is an error, with status 2 like any input that cannot be
-read, where Graphviz's `dot` reads nothing from it, says nothing and exits 0.
+An input may hold several graphs. Each is drawn, one after the other, to
+standard output or into the `-o` file. A part that does not parse ends the
+drawing with status 1, the graphs before it written; a graph that fails, or
+that Graphviz reports an error about, does not stop the ones after it, and
+the status is 1.
+
+These differences from Graphviz's `dot` are kept on purpose:
+
+- `-` names standard input, where Graphviz's `dot` takes it for an unknown
+  option.
+- A directory given as the input is an error, with status 2 like any input
+  that cannot be read, where Graphviz's `dot` reads nothing from it, says
+  nothing and exits 0.
+- A graph that starts on the line another ends on is drawn
+  (`digraph { a } digraph { b }` is two graphs), where Graphviz's `dot` loses
+  it, and an error names the line of the input, where Graphviz's `dot` counts
+  from the line the graph before ended on.
+- A graph that names a layout nobody has fails alone, and the graphs after it
+  are drawn. Graphviz's `dot` then skips every graph after it ("Layout was
+  not done") until one names a layout of its own, and draws from that one on.
+- With `-o` and several graphs the file holds every rendering, as standard
+  output does, where Graphviz's `dot` writes the first into the file and the
+  others to standard output.
 
 ```
 go tool pprof -dot cpu.prof | dot -Tpng -o profile.png
