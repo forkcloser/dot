@@ -25,7 +25,9 @@ dot [-K engine] [-T format] [-o path] [input]
 | input | a DOT file, or `-` | standard input |
 
 Flags take Graphviz's glued form (`-Tpng`, `-oout.png`) as well as the spaced
-one. `-V` prints the version, `-h` the usage.
+one. `-V` prints the version; `-?`, or `-h`, the usage. The first of them
+on the command line is the whole command, as with Graphviz's `dot`: what
+follows it is not read.
 
 The exit statuses are those of Graphviz's `dot`: 0 on success, 2 when the
 input cannot be read (a file that is not there or may not be opened), and 1

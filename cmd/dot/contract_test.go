@@ -142,7 +142,12 @@ func TestExitStatusesAndStreams(t *testing.T) {
 		{"--version", "", []string{"--version"}, 0, "", false},
 		{"-h beats a bad graph", "nonsense", []string{"-h"}, 0, "usage:", false},
 		{"-V beats a bad graph", "nonsense", []string{"-V"}, 0, "", false},
-		{"-h with -V", "", []string{"-V", "-h"}, 0, "usage:", false},
+		{"-?", "", []string{"-?"}, 0, "usage:", false},
+		{"-h before -V", "", []string{"-h", "-V"}, 0, "usage:", false},
+		{"-? before a bad flag", "", []string{"-?", "-Tgif"}, 0, "usage:", false},
+		{"-V before a bad flag", "", []string{"-V", "-Tgif"}, 0, "", false},
+		{"-V before -h", "", []string{"-V", "-h"}, 0, "", false},
+		{"a bad flag before -?", "", []string{"-Tgif", "-?"}, 1, "", true},
 		{"unknown flag", graph, []string{"-x"}, 1, "", true},
 		{"unknown format", graph, []string{"-Tgif"}, 1, "", true},
 		{"unknown layout", graph, []string{"-Kbogus"}, 1, "", true},
@@ -272,6 +277,52 @@ func TestFailuresExitAsGraphvizsDot(t *testing.T) {
 						err,
 						c.code,
 					)
+				}
+			})
+		})
+	}
+}
+
+// The first of -?, -h and -V on the command line is the whole command, as
+// with Graphviz's dot: a bad flag after it is not read, one before it is the
+// failure. Each status is held to the native dot when there is one (-h
+// apart, which it does not have).
+func TestTheFirstOfHelpAndVersionIsTheWholeCommand(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		args []string
+		code int
+	}{
+		{[]string{"-?"}, 0},
+		{[]string{"-?", "-Tnope"}, 0},
+		{[]string{"-?", "-V"}, 0},
+		{[]string{"-V", "-Tnope"}, 0},
+		{[]string{"-V", "-?"}, 0},
+		{[]string{"-Tnope", "-?"}, 1},
+		{[]string{"-Tnope", "-V"}, 1},
+	}
+
+	for _, c := range cases {
+		t.Run(strings.Join(c.args, " "), func(t *testing.T) {
+			t.Parallel()
+
+			if got := dot(t, t.TempDir(), "", c.args...); got.code != c.code {
+				t.Fatalf("exit %d, want %d\nstdout %q\nstderr %q", got.code, c.code, got.stdout, got.stderr)
+			}
+
+			t.Run("as Graphviz's dot has it", func(t *testing.T) {
+				code := 0
+
+				err := child(t, nativeDot(t), c.args...).Run()
+				if exit, ok := errors.AsType[*exec.ExitError](err); ok {
+					code = exit.ExitCode()
+				} else if err != nil {
+					t.Fatal(err)
+				}
+
+				if code != c.code {
+					t.Errorf("the native dot exits %d, want %d", code, c.code)
 				}
 			})
 		})

@@ -36,7 +36,7 @@ const usage = `usage: dot [-K engine] [-T format] [-o path] [input]
   -T format   output format: dot (default), xdot, svg, png, jpg
   -o path     output file (default: standard output)
   -V          print the version
-  -h          print this help
+  -h, -?      print this help
   input       DOT file (default, or "-": standard input)
 `
 
@@ -119,10 +119,14 @@ func parseArgs(args []string) (options, error) {
 		arg := args[index]
 
 		switch {
-		case arg == "-h", arg == "--help":
+		// As with Graphviz's dot, the first of these to be reached is the
+		// whole command: what follows it is not read, a bad flag included.
+		case arg == "-h", arg == "-?", arg == "--help":
 			opt.help = true
+			return opt, nil
 		case arg == "-V", arg == "--version":
 			opt.version = true
+			return opt, nil
 		case arg == "-", !strings.HasPrefix(arg, "-"):
 			if opt.named {
 				return opt, fmt.Errorf("%w: one input at most, got %q and %q", errUsage, opt.input, arg)
