@@ -3,12 +3,14 @@ package main
 import (
 	"os"
 	"syscall"
+
+	"github.com/forkcloser/go-xos"
 )
 
 // keepsItsFile reports whether the regular file at path has to stay the
 // file it is: it has another name.
 func keepsItsFile(path string, _ os.FileInfo) bool {
-	file, err := os.Open(path) // #nosec G304 -- the output the user names
+	file, err := xos.Open(path)
 	if err != nil {
 		return true
 	}
