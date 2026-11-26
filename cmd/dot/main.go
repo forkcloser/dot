@@ -24,7 +24,7 @@ import (
 
 	"github.com/forkcloser/go-graphviz"
 	"github.com/forkcloser/go-graphviz/gvc"
-	"github.com/forkcloser/xos"
+	"github.com/forkcloser/go-xos"
 )
 
 const usage = `usage: dot [-K engine] [-T format] [-o path] [input]
