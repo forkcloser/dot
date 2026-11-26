@@ -19,12 +19,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"runtime/debug"
 	"strings"
 
 	"github.com/forkcloser/go-graphviz"
-	"github.com/forkcloser/go-graphviz/cgraph"
 	"github.com/forkcloser/go-graphviz/gvc"
 	"github.com/forkcloser/xos"
 )
@@ -205,22 +203,101 @@ func version() (string, error) {
 	return fmt.Sprintf("dot - graphviz version %s (forkcloser/dot %s)", engine, own), nil
 }
 
-// render lays graph out and writes it to out in the format asked for.
-func render(ctx context.Context, opt options, graph *graphviz.Graph, out io.Writer) error {
-	engine, err := graphviz.New(ctx)
-	if err != nil {
-		return fmt.Errorf("start graphviz: %w", err)
+// draw renders every graph of src to out, one after the other as the text
+// has them, and returns whether out got a rendering and the status to exit
+// with.
+//
+// As with Graphviz's dot, a graph that fails to lay out or render, or that
+// Graphviz reports an error about while it draws it, does not stop the
+// graphs after it; a part of the text that does not parse does, since
+// nothing can be read past it. Either makes the status a failure, with what
+// was rendered before written all the same.
+//
+// A write to out that fails ends the drawing too, and out then counts as
+// having got nothing: the error is out's and not a graph's, and no graph
+// after it can make whole what out holds.
+func draw(ctx context.Context, opt options, src []byte, out, stderr io.Writer) (wrote bool, status int) {
+	var engine *graphviz.Graphviz
+
+	sink := &recorder{to: out}
+
+	defer func() {
+		if engine != nil {
+			_ = engine.Close()
+		}
+	}()
+
+	for graph, err := range graphviz.ParseAll(src) {
+		if err != nil {
+			fmt.Fprintln(stderr, "dot: parse input:", err)
+
+			return wrote, statusFailed
+		}
+
+		if engine, err = started(ctx, engine, opt); err != nil {
+			_ = graph.Close()
+
+			fmt.Fprintln(stderr, "dot: start graphviz:", err)
+
+			return wrote, statusFailed
+		}
+
+		err = engine.Render(ctx, graph, opt.format, sink)
+		_ = graph.Close()
+
+		if sink.err != nil {
+			fmt.Fprintln(stderr, "dot:", sink.err)
+
+			return false, statusFailed
+		}
+
+		// An error that is gvc.ErrReported came after the whole rendering.
+		if err == nil || errors.Is(err, gvc.ErrReported) {
+			wrote = true
+		}
+
+		if err != nil {
+			fmt.Fprintln(stderr, "dot: render:", err)
+
+			status = statusFailed
+		}
 	}
 
-	defer func() { _ = engine.Close() }()
+	return wrote, status
+}
+
+// started is engine, or, when there is none yet, a new one that lays out
+// as opt asks: an input with nothing to draw starts none.
+func started(ctx context.Context, engine *graphviz.Graphviz, opt options) (*graphviz.Graphviz, error) {
+	if engine != nil {
+		return engine, nil
+	}
+
+	engine, err := graphviz.New(ctx)
+	if err != nil {
+		//nolint:wrapcheck // draw says what failed
+		return nil, err
+	}
 
 	engine.SetLayout(opt.layout)
 
-	if err := engine.Render(ctx, graph, opt.format, out); err != nil {
-		return fmt.Errorf("render: %w", err)
+	return engine, nil
+}
+
+// recorder is a writer that keeps the first error of the one behind it.
+type recorder struct {
+	to  io.Writer
+	err error
+}
+
+func (r *recorder) Write(p []byte) (int, error) {
+	n, err := r.to.Write(p)
+	if err != nil && r.err == nil {
+		r.err = err
 	}
 
-	return nil
+	//nolint:wrapcheck // the writer's own error, which draw reports as it is
+	return n, err
 }
 
 // read is the DOT text of the input: the file named, or standard input.
@@ -273,83 +350,44 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return statusNoInput
 	}
 
-	graph, err := graphviz.ParseBytes(src)
-
-	switch {
-	case errors.Is(err, cgraph.ErrNoGraph):
-		// A text with no graph in it, empty or comments alone, is nothing to
-		// draw: as Graphviz's dot, nothing is written, no file is made or
-		// replaced, and that is no failure.
-		return 0
-	case err != nil:
-		fmt.Fprintln(stderr, "dot: parse input:", err)
-		return statusFailed
-	}
-
-	defer func() { _ = graph.Close() }()
-
 	if opt.output == "" {
-		err = render(context.Background(), opt, graph, stdout)
-	} else {
-		err = renderToFile(context.Background(), opt, graph)
+		_, status := draw(context.Background(), opt, src, stdout, stderr)
+
+		return status
 	}
 
+	status, err := drawToFile(context.Background(), opt, src, stderr)
 	if err != nil {
 		fmt.Fprintln(stderr, "dot:", err)
+
 		return statusFailed
 	}
 
-	return 0
+	return status
 }
 
-// renderToFile renders into a temporary file beside opt.output and renames
-// it onto the path only once the render has completed: a failed render, an
-// interrupt or a full disk leaves whatever was at the path untouched rather
-// than a truncated file that a later build would take for a finished one.
-func renderToFile(ctx context.Context, opt options, graph *graphviz.Graph) error {
-	dir, base := filepath.Split(opt.output)
-	if dir == "" {
-		// A bare name: beside it is the working directory, not the
-		// system's temporary directory CreateTemp takes "" for, which
-		// may be another filesystem the rename cannot cross.
-		dir = "."
+// drawToFile draws into the file opt.output names, and returns the status
+// of the drawing and the error of the file, the graphs' own being on
+// stderr. The path gets every rendering standard output would have got;
+// when there is none, no file is made and the one at the path stays as it
+// was.
+func drawToFile(ctx context.Context, opt options, src []byte, stderr io.Writer) (int, error) {
+	out := &output{path: opt.output}
+
+	// Whatever is not finished is given up: after a write that failed,
+	// what the temporary file holds is not to reach the path.
+	defer out.discard()
+
+	wrote, status := draw(ctx, opt, src, out, stderr)
+	if !wrote {
+		return status, nil
 	}
 
-	tmp, err := xos.CreateTemp(dir, "."+base+".*")
-	if err != nil {
-		//nolint:wrapcheck // os's *PathError already names the operation and the path
-		return err
+	if err := out.finish(); err != nil {
+		return statusFailed, err
 	}
 
-	placed := false
-
-	defer func() {
-		if !placed {
-			_ = tmp.Close()
-			_ = os.Remove(tmp.Name())
-		}
-	}()
-
-	// An error that is gvc.ErrReported came after the whole rendering: the
-	// file goes to its path all the same, and the error to the exit status.
-	reported := render(ctx, opt, graph, tmp)
-	if reported != nil && !errors.Is(reported, gvc.ErrReported) {
-		return reported
-	}
-
-	if err := tmp.Close(); err != nil {
-		//nolint:wrapcheck // os's *PathError already names the operation and the path
-		return err
-	}
-
-	if err := xos.Rename(tmp.Name(), opt.output); err != nil {
-		//nolint:wrapcheck // os's *LinkError already names the operation and both paths
-		return err
-	}
-
-	placed = true
-
-	return reported
+	return status, nil
 }
 
 func main() {

@@ -4,9 +4,10 @@ package main
 // command never panics or faults in the engine; it exits 0 with a rendering
 // on stdout and nothing on stderr, or 1 with "dot: " on stderr. An exit 0
 // with nothing on stdout is a text with no graph in it, and only that. An
-// exit 1 has a rendering on stdout only for an error Graphviz reported
-// while it drew on, which stderr then says. Under -o the path holds a
-// rendering when stdout had one, and is as it was when it had none.
+// exit 1 has a rendering on stdout only when the text begins with a graph:
+// one drawn before a part that failed, or one Graphviz reported an error
+// about while it drew on. Under -o the path holds a rendering when stdout
+// had one, and is as it was when it had none.
 
 import (
 	"bytes"
@@ -18,7 +19,6 @@ import (
 
 	"github.com/forkcloser/go-graphviz"
 	"github.com/forkcloser/go-graphviz/cgraph"
-	"github.com/forkcloser/go-graphviz/gvc"
 )
 
 func FuzzInput(f *testing.F) {
@@ -34,6 +34,9 @@ func FuzzInput(f *testing.F) {
 	f.Add("digraph { node [fontsize=0]; a }", uint8(4))
 	f.Add("digraph { a [width=1e9] }", uint8(2))
 	f.Add("/* comment */ digraph { a }", uint8(0))
+	f.Add("digraph { a }\ndigraph { b -> }\ndigraph { c }", uint8(0))
+	f.Add("digraph { a } nonsense", uint8(2))
+	f.Add("digraph { a [shape=record, label=\"{a|\"] } graph { b }", uint8(1))
 
 	formats := []string{"dot", "xdot", "svg", "png", "jpg"}
 
@@ -63,8 +66,18 @@ func FuzzInput(f *testing.F) {
 				t.Fatalf("exit 1 with stderr %q", stderr.String())
 			}
 
-			if stdout.Len() != 0 && !strings.Contains(stderr.String(), gvc.ErrReported.Error()) {
-				t.Fatalf("exit 1 with %d bytes out and no reported error: %q", stdout.Len(), stderr.String())
+			if stdout.Len() != 0 {
+				parsed, err := graphviz.ParseBytes([]byte(input))
+				if err != nil {
+					t.Fatalf(
+						"exit 1 with %d bytes out for a text whose first graph is %v: %q",
+						stdout.Len(),
+						err,
+						stderr.String(),
+					)
+				}
+
+				_ = parsed.Close()
 			}
 		default:
 			t.Fatalf("exit %d for an input: %q", code, stderr.String())

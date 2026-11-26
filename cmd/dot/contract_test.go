@@ -389,6 +389,180 @@ func TestTheFirstOfHelpAndVersionIsTheWholeCommand(t *testing.T) {
 	}
 }
 
+// drawn is how many graphs a rendering in the dot format holds.
+func drawn(out string) int {
+	count := 0
+
+	for line := range strings.SplitSeq(out, "\n") {
+		if strings.HasPrefix(line, "digraph ") || strings.HasPrefix(line, "graph ") {
+			count++
+		}
+	}
+
+	return count
+}
+
+// outcome is what a dot made of an input: the graphs it drew and its status.
+type outcome struct {
+	graphs int
+	code   int
+}
+
+// exitCode is the status behind the error of a command that ran.
+func exitCode(err error) int {
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
+		return exit.ExitCode()
+	}
+
+	return 0
+}
+
+// An input may hold several graphs, and each is drawn, one after the other.
+// A part that does not parse ends the drawing with status 1 and the graphs
+// before it written; a graph Graphviz reports an error about is written and
+// the ones after it too, with status 1.
+//
+// Where each graph starts on a line of its own, the count and the status
+// are those of Graphviz's dot. Two things it does are not followed: it
+// loses a graph that starts on the line another ends on; and once a graph
+// names a layout it does not have, it skips each graph after it, good as it
+// is, until one names a layout of its own, and draws from that one on.
+// Each case says what Graphviz's dot 16.1.1 does with it, and the native
+// dot is held to that, so that a release that does otherwise is noticed.
+func TestEveryGraphOfTheInputIsDrawn(t *testing.T) {
+	t.Parallel()
+
+	const badLabel = `a [shape=record, label="{a|"]`
+
+	for name, tc := range map[string]struct {
+		text   string
+		graphs int
+		code   int
+		stderr string // a part of it, when the status is 1
+		native outcome
+	}{
+		"a graph a line":               {"digraph { a }\ndigraph { b }\ngraph { c }\n", 3, 0, "", outcome{3, 0}},
+		"a semicolon after each":       {"digraph { a };\ndigraph { b };\n", 2, 0, "", outcome{2, 0}},
+		"a semicolon between two":      {"digraph { a }; digraph { b }\n", 2, 0, "", outcome{1, 0}},
+		"two on one line":              {"digraph { a } digraph { b }\n", 2, 0, "", outcome{1, 0}},
+		"brace against brace":          {"digraph{a}digraph{b}graph{c}", 3, 0, "", outcome{1, 0}},
+		"the second does not parse":    {"digraph { a }\ndigraph { b -> }\ndigraph { c }\n", 1, 1, "syntax error in line 2", outcome{1, 1}},
+		"a word after the graph":       {"digraph { a }\nnonsense\n", 1, 1, "syntax error in line 2", outcome{1, 1}},
+		"the first does not parse":     {"digraph { a -> }\ndigraph { b }\n", 0, 1, "syntax error in line 1", outcome{0, 1}},
+		"the first is reported about":  {"digraph { " + badLabel + " }\ndigraph { b }\n", 2, 1, "bad label format", outcome{2, 1}},
+		"the second is reported about": {"digraph { b }\ndigraph { " + badLabel + " }\n", 2, 1, "bad label format", outcome{2, 1}},
+		"the only one names no layout": {"digraph { layout=nope; a }\n", 0, 1, "nope", outcome{0, 1}},
+		"the first names no layout":    {"digraph { layout=nope; a }\ndigraph { b }\n", 1, 1, "nope", outcome{0, 1}},
+		"a layout nobody has, then three": {
+			"digraph { layout=nope; a }\ndigraph { b }\ndigraph { layout=dot; c }\ndigraph { d }\n", 3, 1, "nope", outcome{2, 1},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			dir := t.TempDir()
+
+			got := dot(t, dir, tc.text, "-Tdot")
+			if got.code != tc.code || drawn(got.stdout) != tc.graphs {
+				t.Fatalf("exit %d and %d graphs, want %d and %d\nstdout %q\nstderr %q",
+					got.code, drawn(got.stdout), tc.code, tc.graphs, got.stdout, got.stderr)
+			}
+
+			if (tc.code == 0) != (got.stderr == "") || !strings.Contains(got.stderr, tc.stderr) {
+				t.Fatalf("stderr %q, want %q in it", got.stderr, tc.stderr)
+			}
+
+			// With -o the file gets what standard output got: every
+			// rendering, or it is not made when there is none.
+			out := filepath.Join(dir, "out.gv")
+
+			toFile := dot(t, dir, tc.text, "-Tdot", "-o", out)
+			if toFile.code != tc.code || toFile.stdout != "" {
+				t.Fatalf("-o: exit %d, stdout %q; want %d and nothing", toFile.code, toFile.stdout, tc.code)
+			}
+
+			written, err := os.ReadFile(out)
+
+			switch {
+			case tc.graphs == 0 && !errors.Is(err, os.ErrNotExist):
+				t.Fatalf("-o made a file for no rendering: %q, %v", written, err)
+			case tc.graphs != 0 && (err != nil || drawn(string(written)) != tc.graphs):
+				t.Fatalf("-o: the file holds %d graphs (%v), want %d", drawn(string(written)), err, tc.graphs)
+			}
+
+			t.Run("what Graphviz's dot does", func(t *testing.T) {
+				out, err := native(t, nativeDot(t), tc.text, "-Tdot")
+
+				if got := (outcome{drawn(string(out)), exitCode(err)}); got != tc.native {
+					t.Errorf("the native dot draws %d graphs and exits %d, want %+v", got.graphs, got.code, tc.native)
+				}
+			})
+		})
+	}
+}
+
+// -K is the layout of every graph of the input, not of the first alone: two
+// graphs are drawn as each is drawn alone.
+func TestEveryGraphIsLaidOutAsAsked(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+
+	for _, layout := range []string{"dot", "neato", "circo"} {
+		alone := dot(t, dir, graph, "-K"+layout, "-Tdot")
+		twice := dot(t, dir, graph+graph, "-K"+layout, "-Tdot")
+
+		if alone.code != 0 || twice.code != 0 || twice.stdout != alone.stdout+alone.stdout {
+			t.Errorf(
+				"-K%s: two graphs exit %d with %q, want twice what one gives: %q (exit %d)",
+				layout, twice.code, twice.stdout, alone.stdout, alone.code,
+			)
+		}
+	}
+
+	if neato, plain := dot(
+		t,
+		dir,
+		graph,
+		"-Kneato",
+		"-Tdot",
+	), dot(
+		t,
+		dir,
+		graph,
+		"-Tdot",
+	); neato.stdout == plain.stdout {
+		t.Error("-Kneato draws the graph as -Kdot does: the test tells nothing apart")
+	}
+}
+
+// With -o and several graphs, the file holds every rendering: what standard
+// output would have held. Graphviz's dot 16.1.1 writes the first graph into
+// the file and the others to standard output, which is not followed; the
+// native dot is held to it, so that a release that does otherwise is
+// noticed.
+func TestGraphvizsDotSplitsSeveralGraphsUnderO(t *testing.T) {
+	t.Parallel()
+
+	file := filepath.Join(t.TempDir(), "out.gv")
+
+	out, err := native(t, nativeDot(t), "digraph { a }\ndigraph { b }\ngraph { c }\n", "-Tdot", "-o", file)
+
+	written, readErr := os.ReadFile(file)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+
+	if exitCode(err) != 0 || drawn(string(written)) != 1 || drawn(string(out)) != 2 {
+		t.Errorf(
+			"the native dot exits %d with %d graphs in the file and %d on standard output, want 0, 1 and 2",
+			exitCode(err),
+			drawn(string(written)),
+			drawn(string(out)),
+		)
+	}
+}
+
 // A text with no graph in it, empty, blank or comments alone, is nothing to
 // draw and no failure, as with Graphviz's dot: exit 0, nothing on either
 // stream, and with -o no file made and the one at the path left as it was.
