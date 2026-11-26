@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"runtime/debug"
 	"strings"
 
@@ -367,55 +366,26 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	return status
 }
 
-// drawToFile draws into a temporary file beside opt.output and renames it
-// onto the path once the drawing is over: an interrupt or a full disk
-// leaves whatever was at the path untouched rather than a truncated file
-// that a later build would take for a finished one. The path gets every
-// rendering standard output would have got; when there is none, an input
-// with no graph, one whose first graph fails or a write that failed, no
-// file is made and the one at the path stays as it was.
-//
-// The error is of the file's own: the graphs' are on stderr, and in status.
+// drawToFile draws into the file opt.output names, and returns the status
+// of the drawing and the error of the file, the graphs' own being on
+// stderr. The path gets every rendering standard output would have got;
+// when there is none, no file is made and the one at the path stays as it
+// was.
 func drawToFile(ctx context.Context, opt options, src []byte, stderr io.Writer) (int, error) {
-	dir, base := filepath.Split(opt.output)
-	if dir == "" {
-		// A bare name: beside it is the working directory, not the
-		// system's temporary directory CreateTemp takes "" for, which
-		// may be another filesystem the rename cannot cross.
-		dir = "."
-	}
+	out := &output{path: opt.output}
 
-	tmp, err := xos.CreateTemp(dir, "."+base+".*")
-	if err != nil {
-		//nolint:wrapcheck // os's *PathError already names the operation and the path
-		return statusFailed, err
-	}
+	// Whatever is not finished is given up: after a write that failed,
+	// what the temporary file holds is not to reach the path.
+	defer out.discard()
 
-	placed := false
-
-	defer func() {
-		if !placed {
-			_ = tmp.Close()
-			_ = os.Remove(tmp.Name())
-		}
-	}()
-
-	wrote, status := draw(ctx, opt, src, tmp, stderr)
+	wrote, status := draw(ctx, opt, src, out, stderr)
 	if !wrote {
 		return status, nil
 	}
 
-	if err := tmp.Close(); err != nil {
-		//nolint:wrapcheck // os's *PathError already names the operation and the path
+	if err := out.finish(); err != nil {
 		return statusFailed, err
 	}
-
-	if err := xos.Rename(tmp.Name(), opt.output); err != nil {
-		//nolint:wrapcheck // os's *LinkError already names the operation and both paths
-		return statusFailed, err
-	}
-
-	placed = true
 
 	return status, nil
 }

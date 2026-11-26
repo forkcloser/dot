@@ -48,6 +48,18 @@ drawing with status 1, the graphs before it written; a graph that fails, or
 that Graphviz reports an error about, does not stop the ones after it, and
 the status is 1.
 
+`-o` writes what is at the path as Graphviz's `dot` does: a symbolic link is
+written through and stays a link, a device or a pipe is written to, every
+name of a file sees the new content, an existing file keeps its mode, its
+owner and its group, a new one takes the umask's mode, and a file that may
+not be written is refused. Where none of that is at stake (a path with
+nothing at it, or a file with one name that is the user's, whose mode is its
+permissions alone, in a directory a file can be made in) the renderings go to
+a temporary file beside the output that is renamed onto it once the drawing
+is over, so an interrupt or a full disk leaves what was at the path as it
+was. A file replaced that way does not keep its extended attributes nor an
+access control list set on it, which Graphviz's `dot` keeps.
+
 These differences from Graphviz's `dot` are kept on purpose:
 
 - `-` names standard input, where Graphviz's `dot` takes it for an unknown
