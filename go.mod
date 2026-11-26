@@ -3,7 +3,7 @@ module github.com/forkcloser/dot
 go 1.26.0
 
 require (
-	github.com/forkcloser/go-graphviz v0.6.1-0.20261125173332-44cc369dc4d0
+	github.com/forkcloser/go-graphviz v0.6.1-0.20261126021725-679934e9dd30
 	github.com/forkcloser/xos v0.1.2
 )
 
