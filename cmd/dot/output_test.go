@@ -19,12 +19,21 @@ import (
 )
 
 // rendered fails the test unless data is an SVG rendering, whole and with
-// nothing after it.
+// nothing after it. Its last line ends as the writer ends lines: Graphviz's
+// dot writes a text format through the C library's text mode, which on
+// Windows is a carriage return before each line feed.
 func rendered(t *testing.T, what string, data []byte, err error) {
 	t.Helper()
 
-	if err != nil || !bytes.HasPrefix(data, []byte("<?xml")) || !bytes.HasSuffix(data, []byte("</svg>\n")) {
-		t.Errorf("%s holds %q (%v), want the rendering alone", what, firstBytes(data), err)
+	whole := bytes.HasSuffix(data, []byte("</svg>\n")) || bytes.HasSuffix(data, []byte("</svg>\r\n"))
+	if err != nil || !bytes.HasPrefix(data, []byte("<?xml")) || !whole {
+		t.Errorf(
+			"%s holds %q ... %q (%v), want the rendering alone",
+			what,
+			firstBytes(data),
+			data[max(0, len(data)-16):],
+			err,
+		)
 	}
 }
 
