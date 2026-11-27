@@ -12,46 +12,46 @@
 pins:
   - name: dot-linux-amd64
     renovate: github-releases forkcloser/testbin
-    version: 0.5.0
+    version: 0.5.1
     url: https://github.com/forkcloser/testbin/releases/download/v${version}/graphviz-linux-amd64.tar.gz
     verify: github-attestation forkcloser/testbin forkcloser/testbin/.github/workflows/release.yaml
     digest:
-      version: 0.5.0
-      source: 82a438a43fa5157a2cdff9556d65c54078df1254af22bf5916e366379f3eb35f
-      sha256: 337dac72259d1025333e080f447c5cba65f6ec7d4d71e8a81b50652586b7e654
+      version: 0.5.1
+      source: ef3feb8750e10e44080863809c31801bf888994616f9f66a882d0f4000db5c26
+      sha256: 8bfa333fd38e9f981e49a8cbe6a8065480ad598c564d25f48620f0145a0e2627
   - name: dot-linux-arm64
     renovate: github-releases forkcloser/testbin
-    version: 0.5.0
+    version: 0.5.1
     url: https://github.com/forkcloser/testbin/releases/download/v${version}/graphviz-linux-arm64.tar.gz
     verify: github-attestation forkcloser/testbin forkcloser/testbin/.github/workflows/release.yaml
     digest:
-      version: 0.5.0
-      source: 1a7acf8c4bd48ee1c020c6c9e6b9f9478a6a24496bc65e20f11e047c72237f22
-      sha256: 78db35f0501c26ec0558385fe4464911467f439ee82aa878fa9f8838468490e4
+      version: 0.5.1
+      source: 0e4536818db3fbb00938f456299b252cbab187383ecd11db9e996691bb7edb66
+      sha256: 7073d899d8e152fcde5234ee3c3ec9b59c5356527d72c478540565dc060e7fd8
   - name: dot-darwin-arm64
     renovate: github-releases forkcloser/testbin
-    version: 0.5.0
+    version: 0.5.1
     url: https://github.com/forkcloser/testbin/releases/download/v${version}/graphviz-darwin-arm64.tar.gz
     verify: github-attestation forkcloser/testbin forkcloser/testbin/.github/workflows/release.yaml
     digest:
-      version: 0.5.0
-      source: 32c1c68022092936c763f18bb5d1711e5cc7ab9c48b350ab35e2cd8fdbe2a547
-      sha256: f8d2e3010b181e9836f75dec590e83137257cda8836219a3a13bdad6825a52bd
+      version: 0.5.1
+      source: e0edf916f0e153d6e45b958a20291feee822280a1e5e78a30c54d60d0988a1f7
+      sha256: 73b6f3f1ffec489a2cd29035086258050cb29e1de887b93afbe1a7cfd5b684a7
   - name: dot-windows-amd64
     renovate: github-releases forkcloser/testbin
-    version: 0.5.0
+    version: 0.5.1
     url: https://github.com/forkcloser/testbin/releases/download/v${version}/graphviz-windows-amd64.tar.gz
     verify: github-attestation forkcloser/testbin forkcloser/testbin/.github/workflows/release.yaml
     digest:
-      version: 0.5.0
-      source: e758fbeb410e27e667617bf075ee3648c058d9f67fd45313c02b09d8e2af4e73
-      sha256: dee3a02b4b880742b203df02bd7013bca6304fd70347ff1d68260e6a9890cd29
+      version: 0.5.1
+      source: 3397b93e5a0f12d0931ad7ca49098ef34ed35da655dd4ba2c99bb3e598f2df73
+      sha256: bffb765a8449a580ba6c42fd13afb0ce7861dbc4f3bdbc3bcbe95cc1d59bb8ee
   - name: dot-windows-arm64
     renovate: github-releases forkcloser/testbin
-    version: 0.5.0
+    version: 0.5.1
     url: https://github.com/forkcloser/testbin/releases/download/v${version}/graphviz-windows-arm64.tar.gz
     verify: github-attestation forkcloser/testbin forkcloser/testbin/.github/workflows/release.yaml
     digest:
-      version: 0.5.0
-      source: 0db37392913c4fb6f86604ee9043b6f10df4bc8cb4a4366a4e38f1eb2207ab46
-      sha256: c3c1ecfe29fb991a3f1c350380c1bada9c57f61771e6fe6f1b55604a8a41de8e
+      version: 0.5.1
+      source: 36baadb34cd015dd283df002c5db7508c06b51d502252b98847413d75d776690
+      sha256: 506bbf221b79488afd927a2cfb1bd109456111522ab80cd4ccfb468c2c88da33
