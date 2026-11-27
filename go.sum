@@ -1,5 +1,5 @@
-github.com/forkcloser/go-graphviz v0.6.1-0.20261126021725-679934e9dd30 h1:mAcMS3gU4Nl5EMKbRSPtrvlqc+i2+xdXwbLfnP7Oyss=
-github.com/forkcloser/go-graphviz v0.6.1-0.20261126021725-679934e9dd30/go.mod h1:SC+ch2AgTanRZJH8JpOw99BOCnLQdBLEu1xz4QuihcE=
+github.com/forkcloser/go-graphviz v0.6.1-0.20261127071901-0fa757ce3a36 h1:gG6UEl1+02UzETFlrbFIh1dd5vsrXQkSlwHVhpylyZY=
+github.com/forkcloser/go-graphviz v0.6.1-0.20261127071901-0fa757ce3a36/go.mod h1:81PtFTDT4XLQULopNqpG33FXhG2HTCDIlwPPThevGtA=
 github.com/forkcloser/go-xos v1.0.0-rc.1 h1:zdqsF6bIjGURgef6ZSY7lJn7XrGs53cKQgXScLFu2xE=
 github.com/forkcloser/go-xos v1.0.0-rc.1/go.mod h1:Q86v1/MuDQPc30BGkLmdH96uyCqM/C6Y+VPzp+dKPnQ=
 github.com/tetratelabs/wazero v1.12.0 h1:DuWcpNu/FzgEXgGBDp8J1Spc+CWOvvtvVyjKlaZopYU=
