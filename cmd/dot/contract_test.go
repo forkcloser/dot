@@ -331,10 +331,11 @@ func TestVersionIsGraphvizsLine(t *testing.T) {
 		}
 
 		// The same words up to the release, one line, a parenthesis after.
-		native := regexp.MustCompile(`^dot - graphviz version (\d+\.\d+\.\d+) \(.+\)\n$`).
-			FindStringSubmatch(stderr.String())
+		said := string(nativeText(stderr.Bytes()))
+
+		native := regexp.MustCompile(`^dot - graphviz version (\d+\.\d+\.\d+) \(.+\)\n$`).FindStringSubmatch(said)
 		if native == nil {
-			t.Fatalf("the native dot's line is %q, not the shape -V follows", stderr.String())
+			t.Fatalf("the native dot's line is %q, not the shape -V follows", said)
 		}
 
 		if majorMinor(native[1]) != majorMinor(match[1]) {

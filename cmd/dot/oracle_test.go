@@ -146,18 +146,27 @@ func majorMinor(version string) string {
 	return parts[0] + "." + parts[1]
 }
 
-// nativeDot is the Graphviz dot the oracle runs, or a skip.
+// nativeDot is the Graphviz dot the oracle runs: the one DOT_ORACLE names.
+// Without one, with one that does not run or with one of another Graphviz
+// than the engine's, the test skips; under DOT_ORACLE_REQUIRED, which
+// `just test` sets beside the pinned dot, it fails, and the release has to
+// be the engine's to the patch.
 func nativeDot(t *testing.T) string {
 	t.Helper()
 
+	missing := t.Skipf
+	if os.Getenv("DOT_ORACLE_REQUIRED") != "" {
+		missing = t.Fatalf
+	}
+
 	path := os.Getenv("DOT_ORACLE")
 	if path == "" {
-		t.Skip("set DOT_ORACLE to a Graphviz dot to hold the command's DOT to it")
+		missing("set DOT_ORACLE to a Graphviz dot to hold the command's DOT to it")
 	}
 
 	out, err := child(t, path, "-V").CombinedOutput()
 	if err != nil {
-		t.Skipf("%s -V: %v", path, err)
+		missing("%s -V: %v", path, err)
 	}
 
 	// "dot - graphviz version 16.1.0 (…)"
@@ -170,7 +179,16 @@ func nativeDot(t *testing.T) string {
 		}
 	}
 
-	if pin := enginePin(t); majorMinor(version) != majorMinor(pin) {
+	pin := enginePin(t)
+	if os.Getenv("DOT_ORACLE_REQUIRED") != "" && version != pin {
+		t.Fatalf(
+			"the native dot is Graphviz %s, the engine %s: the dot-<os>-<arch> pins move with the engine",
+			version,
+			pin,
+		)
+	}
+
+	if majorMinor(version) != majorMinor(pin) {
 		t.Skipf("the native dot is %s, the engine %s", version, pin)
 	}
 
@@ -184,7 +202,18 @@ func native(t *testing.T, path, src string, args ...string) ([]byte, error) {
 	cmd := child(t, path, args...)
 	cmd.Stdin = strings.NewReader(src)
 
-	return cmd.Output()
+	out, err := cmd.Output()
+
+	return nativeText(out), err
+}
+
+// nativeText is what Graphviz's dot wrote, with the line endings this
+// command writes. On Windows Graphviz's dot ends each line of a text format,
+// and of what it says, with a carriage return and a line feed: its streams
+// are in the C library's text mode. This command writes a line feed alone on
+// every platform, a difference it keeps.
+func nativeText(out []byte) []byte {
+	return bytes.ReplaceAll(out, []byte("\r\n"), []byte("\n"))
 }
 
 func TestDOTIsGraphvizsDOTBothWays(t *testing.T) {
