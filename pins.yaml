@@ -12,7 +12,7 @@
 pins:
   - name: dot-linux-amd64
     renovate: github-releases forkcloser/testbin
-    version: 0.5.0
+    version: 0.5.1
     url: https://github.com/forkcloser/testbin/releases/download/v${version}/graphviz-linux-amd64.tar.gz
     verify: github-attestation forkcloser/testbin forkcloser/testbin/.github/workflows/release.yaml
     digest:
@@ -21,7 +21,7 @@ pins:
       sha256: 337dac72259d1025333e080f447c5cba65f6ec7d4d71e8a81b50652586b7e654
   - name: dot-linux-arm64
     renovate: github-releases forkcloser/testbin
-    version: 0.5.0
+    version: 0.5.1
     url: https://github.com/forkcloser/testbin/releases/download/v${version}/graphviz-linux-arm64.tar.gz
     verify: github-attestation forkcloser/testbin forkcloser/testbin/.github/workflows/release.yaml
     digest:
@@ -30,7 +30,7 @@ pins:
       sha256: 78db35f0501c26ec0558385fe4464911467f439ee82aa878fa9f8838468490e4
   - name: dot-darwin-arm64
     renovate: github-releases forkcloser/testbin
-    version: 0.5.0
+    version: 0.5.1
     url: https://github.com/forkcloser/testbin/releases/download/v${version}/graphviz-darwin-arm64.tar.gz
     verify: github-attestation forkcloser/testbin forkcloser/testbin/.github/workflows/release.yaml
     digest:
@@ -39,7 +39,7 @@ pins:
       sha256: f8d2e3010b181e9836f75dec590e83137257cda8836219a3a13bdad6825a52bd
   - name: dot-windows-amd64
     renovate: github-releases forkcloser/testbin
-    version: 0.5.0
+    version: 0.5.1
     url: https://github.com/forkcloser/testbin/releases/download/v${version}/graphviz-windows-amd64.tar.gz
     verify: github-attestation forkcloser/testbin forkcloser/testbin/.github/workflows/release.yaml
     digest:
@@ -48,7 +48,7 @@ pins:
       sha256: dee3a02b4b880742b203df02bd7013bca6304fd70347ff1d68260e6a9890cd29
   - name: dot-windows-arm64
     renovate: github-releases forkcloser/testbin
-    version: 0.5.0
+    version: 0.5.1
     url: https://github.com/forkcloser/testbin/releases/download/v${version}/graphviz-windows-arm64.tar.gz
     verify: github-attestation forkcloser/testbin forkcloser/testbin/.github/workflows/release.yaml
     digest:
